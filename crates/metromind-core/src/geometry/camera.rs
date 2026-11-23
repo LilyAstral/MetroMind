@@ -49,6 +49,14 @@ impl Camera {
         }
     }
 
+    /// The same zoom, panned so `world` sits at `viewport_center`.
+    pub fn centered_on(self, world: Vec2, viewport_center: Vec2) -> Self {
+        Self {
+            pan: viewport_center - world * self.zoom,
+            ..self
+        }
+    }
+
     /// A camera that shows the world box `lo..hi` centered in the viewport,
     /// leaving `margin` points free on every side.
     pub fn fit(lo: Vec2, hi: Vec2, viewport_min: Vec2, viewport_size: Vec2, margin: f32) -> Self {

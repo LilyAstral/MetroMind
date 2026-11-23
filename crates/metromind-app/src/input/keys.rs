@@ -76,6 +76,7 @@ fn command_shortcut(key: Key, shift: bool, out: &mut InputOutcome) -> bool {
         Key::O => Command::Open,
         Key::N => Command::NewMap,
         Key::A => Command::SelectAll,
+        Key::F => Command::OpenSearch,
         _ => return false,
     };
     out.commands.push(command);

@@ -29,6 +29,8 @@ impl MetroMindApp {
             Command::PickerPick(index) => self.picker_pick(index),
             Command::PickerCancel => self.interaction.picker = None,
             Command::Act(action) => self.run_action(action),
+            Command::OpenSearch => self.open_search(),
+            Command::JumpTo(id) => self.jump_to(id, viewport),
             Command::HighlightLine(line) => self.interaction.highlight = line,
             Command::HoverLine(line) => self.interaction.hover_line = line,
             Command::NewIdea { spot, membership } => self.new_idea(spot, membership),

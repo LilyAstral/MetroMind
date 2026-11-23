@@ -21,7 +21,8 @@ impl MetroMindApp {
     pub(super) fn map_view(&mut self, ui: &mut Ui) {
         let (rect, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
         let ctx = ui.ctx().clone();
-        self.interaction.typing = self.rename.is_some();
+        self.interaction.typing = self.rename.is_some() || self.search.is_some();
+        self.interaction.searching = self.search.is_some();
         let outcome = input::collect(
             &ctx,
             &response,
@@ -40,7 +41,11 @@ impl MetroMindApp {
             self.fit(rect);
         }
         self.show_picker(&ctx, rect);
+        self.show_search(&ctx, rect);
         self.apply_queued(rect);
+        self.advance_glide(&ctx);
+        let now = ctx.input(|i| i.time);
+        self.update_hover_preview(&ctx, now);
         self.follow_cursor(&ctx, response.hover_pos());
         self.plan = self.build_plan(rect);
         self.draw(ui, rect);

@@ -3,6 +3,7 @@
 
 pub mod context_menu;
 pub mod help;
+pub mod hover_preview;
 pub mod line_rows;
 pub mod menu;
 pub mod notes_panel;
@@ -10,6 +11,7 @@ pub mod palette_row;
 pub mod picker;
 pub mod picker_view;
 pub mod rename;
+pub mod search;
 pub mod side_panel;
 pub mod status;
 pub mod style;

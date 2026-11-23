@@ -11,6 +11,7 @@ mod actions;
 mod commands;
 mod files;
 mod map_view;
+mod navigation;
 mod picker;
 
 use crate::document::Document;
@@ -45,6 +46,10 @@ pub struct MetroMindApp {
     show_help: bool,
     /// Where the last right-click landed; read by the context menu while it's open.
     menu_target: Option<crate::ui::context_menu::MenuTarget>,
+    search: Option<crate::ui::search::SearchState>,
+    glide: Option<navigation::CameraGlide>,
+    /// The station under the pointer and when the pointer arrived on it (egui seconds).
+    hover_since: Option<(metromind_core::model::StationId, f64)>,
     grain: TextureHandle,
     field: FieldCache,
     /// Edits and commands from panels, applied with the map's input.
@@ -79,6 +84,9 @@ impl MetroMindApp {
             status: Status::default(),
             show_help: false,
             menu_target: None,
+            search: None,
+            glide: None,
+            hover_since: None,
             grain,
             field: FieldCache::default(),
             queued_edits: Vec::new(),

@@ -36,6 +36,8 @@ pub struct Interaction {
     pub highlight: Option<LineId>,
     /// A line the pointer is over in the side panel.
     pub hover_line: Option<LineId>,
+    /// The Ctrl+F box is open; the map ignores pointer and keys until it closes.
+    pub searching: bool,
 }
 
 impl Interaction {
@@ -104,6 +106,9 @@ pub enum Command {
     Connect(Option<ConnectDrag>),
     /// Something to do to the selection, from a key or a context menu.
     Act(Action),
+    OpenSearch,
+    /// Centre the view on a station, select it, and close the search box.
+    JumpTo(StationId),
     /// Lock a line as highlighted, or clear it.
     HighlightLine(Option<LineId>),
     /// The side panel reports the line under the pointer.
@@ -162,6 +167,9 @@ pub struct InputContext<'a> {
 /// while any text box has focus, so typing never triggers them.
 pub fn collect(ctx: &Context, map_response: &Response, cx: &InputContext) -> InputOutcome {
     let mut out = InputOutcome::default();
+    if cx.interaction.searching {
+        return out;
+    }
     if let Some(picker) = &cx.interaction.picker {
         picker::collect(ctx, cx, picker, &mut out);
         return out;
