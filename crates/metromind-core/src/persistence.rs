@@ -33,7 +33,8 @@ pub fn from_json(json: &str) -> Result<MetroMap, MapError> {
             supported: SCHEMA_VERSION,
         });
     }
-    let map: MetroMap = serde_json::from_str(json)?;
+    let mut map: MetroMap = serde_json::from_str(json)?;
+    map.upgrade();
     map.validate()?;
     Ok(map)
 }

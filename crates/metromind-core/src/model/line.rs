@@ -11,6 +11,9 @@ pub struct Line {
     pub name: String,
     pub color_index: u8,
     pub stations: Vec<StationId>,
+    /// A user-picked colour that overrides the palette colour for `color_index`.
+    #[serde(default)]
+    pub custom_color: Option<[u8; 3]>,
 }
 
 impl Line {

@@ -63,7 +63,7 @@ fn example_file_loads() {
 #[test]
 fn newer_schema_is_rejected_with_friendly_message() {
     let json = to_json(&MetroMap {
-        schema_version: 2,
+        schema_version: 3,
         ..MetroMap::default()
     })
     .expect("serialize");
@@ -71,8 +71,8 @@ fn newer_schema_is_rejected_with_friendly_message() {
     assert!(matches!(
         err,
         MapError::NewerSchema {
-            found: 2,
-            supported: 1
+            found: 3,
+            supported: 2
         }
     ));
     assert!(err.to_string().contains("newer MetroMind"));
@@ -89,4 +89,29 @@ fn inconsistent_file_is_rejected() {
     let json = r#"{ "schema_version": 1, "next_id": 3, "stations": {},
         "lines": { "1": { "id": 1, "name": "x", "color_index": 0, "stations": [2] } } }"#;
     assert!(matches!(from_json(json), Err(MapError::UnknownStation(_))));
+}
+
+#[test]
+fn v1_fixture_loads_with_default_colours_and_order() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/example.metromind");
+    let map = load(&path).expect("v1 file loads");
+    assert_eq!(map.schema_version, 2);
+    assert_eq!(map.palette, 0);
+    assert!(map.lines.values().all(|l| l.custom_color.is_none()));
+    let ascending: Vec<LineId> = map.lines.keys().copied().collect();
+    assert_eq!(map.line_order, ascending);
+}
+
+#[test]
+fn v2_round_trip_keeps_order_palette_and_custom_colours() {
+    let mut map = sample_map(now());
+    map.palette = 4;
+    let mut ids: Vec<LineId> = map.lines.keys().copied().collect();
+    ids.reverse();
+    map.line_order = ids;
+    if let Some(line) = map.lines.values_mut().next() {
+        line.custom_color = Some([10, 20, 30]);
+    }
+    let json = to_json(&map).expect("serialises");
+    assert_eq!(from_json(&json).expect("parses"), map);
 }

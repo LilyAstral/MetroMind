@@ -67,9 +67,11 @@ pub fn sample_map(now: DateTime<Utc>) -> MetroMap {
             name: name.into(),
             color_index,
             stations,
+            custom_color: None,
         };
         map.lines.insert(id, line);
     }
+    map.line_order = map.lines.keys().copied().collect();
     map.next_id = (STATIONS.len() + LINES.len()) as u64 + 1;
     map
 }

@@ -108,8 +108,10 @@ fn bench_500_stations() {
             name: format!("L{l}"),
             color_index: l as u8,
             stations,
+            custom_color: None,
         };
         map.lines.insert(id, line);
+        map.line_order.push(id);
     }
     map.next_id = 2000;
     let viewport = Rect::from_min_max(pos2(0.0, 0.0), pos2(1600.0, 1000.0));

@@ -52,9 +52,11 @@ fn a_session_of_edits_can_be_fully_undone_and_redone() {
         name: "Theme".into(),
         color_index: 0,
         stations: vec![a_id],
+        custom_color: None,
     };
     let line_id = line.id;
-    apply(&mut map, Edit::CreateLine { line });
+    let position = map.line_order.len();
+    apply(&mut map, Edit::CreateLine { line, position });
     apply(
         &mut map,
         Edit::AddToLine {

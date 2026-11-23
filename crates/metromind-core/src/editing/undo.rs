@@ -25,11 +25,11 @@ impl UndoStack {
         clock: &dyn Clock,
         settings: &EnergySettings,
     ) -> Result<(), MapError> {
-        let touched = edit.touch();
+        let touched = edit.touches();
         let inverse = edit.apply(map)?;
         push_bounded(&mut self.undo, inverse);
         self.redo.clear();
-        if let Some((id, kind)) = touched {
+        for (id, kind) in touched {
             touch(map, id, kind, clock, settings)?;
         }
         Ok(())

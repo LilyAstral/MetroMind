@@ -158,19 +158,16 @@ fn new_line(station: StationId, map: &MetroMap, out: &mut InputOutcome) {
     let line = Line {
         id: LineId(map.peek_id()),
         name: format!("Line {}", map.lines.len() + 1),
-        color_index: free_color(map),
+        color_index: map.free_color_index().unwrap_or(0),
         stations: vec![station],
+        custom_color: None,
     };
     let hint = format!("Started {}. Rename it in the side panel.", line.name);
-    out.edits.push(Edit::CreateLine { line });
+    out.edits.push(Edit::CreateLine {
+        line,
+        position: map.line_order.len(),
+    });
     out.commands.push(Command::Notice(hint));
-}
-
-/// The first color no line uses yet, so new lines never clash.
-fn free_color(map: &MetroMap) -> u8 {
-    (0..LINE_COLOR_COUNT)
-        .find(|&c| map.lines.values().all(|l| l.color_index != c))
-        .unwrap_or(0)
 }
 
 /// Start renaming the selected station with whatever was typed.
@@ -186,19 +183,5 @@ fn start_typing(ctx: &Context, cx: &InputContext, out: &mut InputOutcome) {
     });
     if let Some(text) = typed {
         out.commands.push(Command::StartRename { id, text });
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use metromind_core::chrono::DateTime;
-    use metromind_core::sample::sample_map;
-
-    #[test]
-    fn free_color_skips_used_colors() {
-        let map = sample_map(DateTime::UNIX_EPOCH);
-        assert_eq!(free_color(&map), 3);
-        assert_eq!(free_color(&MetroMap::default()), 0);
     }
 }

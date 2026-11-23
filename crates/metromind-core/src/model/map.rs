@@ -1,11 +1,11 @@
-use super::{Line, LineId, Station, StationId};
+use super::{LINE_COLOR_COUNT, Line, LineId, Station, StationId};
 use crate::MapError;
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Current file format version. Bump it when the JSON shape changes.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// The whole brainstorm. `BTreeMap`s keep iteration (and saved files) in a
 /// deterministic order, so files diff cleanly and tests are stable.
@@ -14,6 +14,13 @@ pub struct MetroMap {
     pub schema_version: u32,
     /// Simple ID allocator shared by stations and lines. IDs are never reused.
     pub next_id: u64,
+    /// Index into the app's palette list. Saved so a map keeps its look.
+    #[serde(default)]
+    pub palette: u8,
+    /// Lines in the order the number keys and side panel show them. A
+    /// permutation of `lines`' keys.
+    #[serde(default)]
+    pub line_order: Vec<LineId>,
     pub stations: BTreeMap<StationId, Station>,
     pub lines: BTreeMap<LineId, Line>,
 }
@@ -34,6 +41,8 @@ impl Default for MetroMap {
         Self {
             schema_version: SCHEMA_VERSION,
             next_id: 1,
+            palette: 0,
+            line_order: Vec::new(),
             stations: BTreeMap::new(),
             lines: BTreeMap::new(),
         }
@@ -72,10 +81,28 @@ impl MetroMap {
         self.lines_through(id).count() >= 2
     }
 
-    /// The line bound to number key `index + 1`. Lines keep creation order
-    /// because IDs only grow.
+    /// The line bound to number key `index + 1`, in [`Self::line_order`].
     pub fn line_at(&self, index: usize) -> Option<&Line> {
-        self.lines.values().nth(index)
+        self.line_order.get(index).and_then(|id| self.lines.get(id))
+    }
+
+    /// Every line, in the user-chosen order.
+    pub fn ordered_lines(&self) -> impl Iterator<Item = &Line> {
+        self.line_order.iter().filter_map(|id| self.lines.get(id))
+    }
+
+    /// The lowest colour index no line uses yet, or `None` when all are taken.
+    pub fn free_color_index(&self) -> Option<u8> {
+        (0..LINE_COLOR_COUNT).find(|&c| self.lines.values().all(|l| l.color_index != c))
+    }
+
+    /// Bring a map read from an older schema up to the current one. Old files
+    /// have no `line_order`, so it starts as ascending IDs (the old behaviour).
+    pub(crate) fn upgrade(&mut self) {
+        if self.schema_version < 2 {
+            self.line_order = self.lines.keys().copied().collect();
+        }
+        self.schema_version = SCHEMA_VERSION;
     }
 
     /// The next ID the allocator would hand out, without consuming it.
@@ -151,6 +178,15 @@ impl MetroMap {
                 return Err(MapError::UnknownStation(missing));
             }
         }
+        let mut seen = BTreeSet::new();
+        let order_ok = self.line_order.len() == self.lines.len()
+            && self
+                .line_order
+                .iter()
+                .all(|id| self.lines.contains_key(id) && seen.insert(*id));
+        if !order_ok {
+            return Err(MapError::BadLineOrder);
+        }
         Ok(())
     }
 }
@@ -161,55 +197,4 @@ pub fn canonical_pair(a: StationId, b: StationId) -> (StationId, StationId) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::sample::sample_map;
-    use chrono::DateTime;
-
-    fn sample() -> MetroMap {
-        sample_map(DateTime::UNIX_EPOCH)
-    }
-
-    #[test]
-    fn sample_has_two_interchanges() {
-        let map = sample();
-        let interchanges = map
-            .stations
-            .keys()
-            .filter(|&&id| map.is_interchange(id))
-            .count();
-        assert_eq!(interchanges, 2);
-    }
-
-    #[test]
-    fn sample_is_valid() {
-        assert!(sample().validate().is_ok());
-    }
-
-    #[test]
-    fn segments_count_matches_lines() {
-        let map = sample();
-        let expected: usize = map.lines.values().map(|l| l.stations.len() - 1).sum();
-        assert_eq!(map.segments().count(), expected);
-    }
-
-    #[test]
-    fn bounds_of_empty_map_is_none() {
-        assert!(MetroMap::default().bounds().is_none());
-    }
-
-    #[test]
-    fn validate_catches_dangling_station() {
-        let mut map = sample();
-        if let Some(line) = map.lines.values_mut().next() {
-            line.stations.push(StationId(9_999));
-        }
-        assert!(matches!(map.validate(), Err(MapError::UnknownStation(_))));
-    }
-
-    #[test]
-    fn canonical_pair_is_symmetric() {
-        let (a, b) = (StationId(3), StationId(7));
-        assert_eq!(canonical_pair(a, b), canonical_pair(b, a));
-    }
-}
+mod tests;

@@ -20,6 +20,8 @@ pub enum MapError {
     DuplicateId(u64),
     #[error("that station is already on this line")]
     AlreadyOnLine,
+    #[error("the line order does not match the lines")]
+    BadLineOrder,
     #[error("position {index} is outside the line")]
     BadIndex { index: usize },
 }

@@ -44,7 +44,7 @@ fn lines_section(ui: &mut Ui, map: &MetroMap, drafts: &mut LineNameDrafts, edits
     if map.lines.is_empty() {
         ui.label(RichText::new("Select an idea and press N to start a line.").weak());
     }
-    for (index, line) in map.lines.values().enumerate() {
+    for (index, line) in map.ordered_lines().enumerate() {
         ui.horizontal(|ui| {
             let (rect, _) = ui.allocate_exact_size(vec2(SWATCH, SWATCH), Sense::hover());
             ui.painter()
