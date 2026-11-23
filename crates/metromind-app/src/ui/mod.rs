@@ -6,6 +6,8 @@ pub mod help;
 pub mod hover_preview;
 pub mod line_rows;
 pub mod menu;
+pub mod note_draft;
+pub mod note_list;
 pub mod notes_panel;
 pub mod palette_row;
 pub mod picker;

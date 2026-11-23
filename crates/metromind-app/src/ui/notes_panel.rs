@@ -4,10 +4,12 @@
 
 use crate::input::Command;
 use crate::render::colors::line_color;
+use crate::ui::note_draft::ListDraft;
+use crate::ui::note_list;
 use eframe::egui::{self, RichText, TextEdit, Ui};
 use metromind_core::editing::Edit;
 use metromind_core::energy::Touch;
-use metromind_core::model::{MetroMap, StationId};
+use metromind_core::model::{MetroMap, NoteItem, StationId};
 
 const PANEL_WIDTH: f32 = 320.0;
 const NOTE_ROWS: usize = 14;
@@ -18,6 +20,7 @@ pub struct NotesState {
     pub station: StationId,
     pub title: String,
     pub notes: String,
+    pub list: ListDraft,
 }
 
 #[derive(Debug, Default)]
@@ -34,6 +37,7 @@ impl NotesState {
             station,
             title: s.title.clone(),
             notes: s.notes.clone(),
+            list: ListDraft::new(&s.items),
         })
     }
 
@@ -55,6 +59,13 @@ impl NotesState {
                 notes: self.notes.clone(),
             });
         }
+        let items: Vec<NoteItem> = self.list.cleaned();
+        if items != s.items {
+            edits.push(Edit::SetNoteItems {
+                id: self.station,
+                items,
+            });
+        }
         edits
     }
 }
@@ -71,6 +82,7 @@ pub fn show(ui: &mut Ui, state: &mut NotesState, map: &MetroMap) -> NotesOutcome
                 }
             });
             text_fields(ui, state, map, &mut out);
+            list_field(ui, state, map, &mut out);
             lines_on(ui, state.station, map);
             actions(ui, state.station, &mut out);
         });
@@ -109,6 +121,21 @@ fn sync(response: &egui::Response, draft: &mut String, model: &str) {
     if !response.has_focus() && !response.lost_focus() && draft != model {
         model.clone_into(draft);
     }
+}
+
+fn list_field(ui: &mut Ui, state: &mut NotesState, map: &MetroMap, out: &mut NotesOutcome) {
+    let Some(station) = map.stations.get(&state.station) else {
+        return;
+    };
+    ui.add_space(8.0);
+    note_list::show(
+        ui,
+        state.station,
+        &station.items,
+        station.list_style,
+        &mut state.list,
+        &mut out.edits,
+    );
 }
 
 fn lines_on(ui: &mut Ui, station: StationId, map: &MetroMap) {
