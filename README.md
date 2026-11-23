@@ -34,6 +34,8 @@ cargo test --release -p metromind-app -- --ignored --nocapture
 | New idea on a line | Double-click a line (inserts between its two stations) |
 | Rename | `F2`, double-click the station, or just start typing |
 | Notes | `Enter` (opens the right-hand pane) |
+| List items (in the notes pane) | `Enter` adds · `Backspace` on an empty item removes · `Alt+↑` / `Alt+↓` moves |
+| Idea panel | Rest the pointer on an idea (it appears beside the cursor) |
 | Move | Drag (snaps to the 40-unit grid on release); drag a selected idea to move the whole selection |
 | Connect to an idea · branch off one | Right-drag from an idea onto another idea (connect) or onto empty space (branch), then pick a line |
 | Context menu | Right-click an idea, a segment, or empty space |
@@ -83,6 +85,12 @@ Data flows one way: input → `Edit` → model → this frame's `FramePlan` → 
 - **Views.** The side panel's "Layers" section is now **Views**. Lines can be reordered with ▲ / ▼, and the number keys follow that order. Clicking a line's number highlights it on the map.
 - **Palettes and colours.** Six palettes, shown as striped icons above the line list. Clicking a line's colour swatch picks a custom colour; ↺ returns it to the palette colour.
 - **Map file schema v2.** Saves write `schema_version: 2`, which adds `line_order`, `palette`, and each line's `custom_color`. **Version 1 files still open.** On load their lines take ascending ID order, the Pastel palette, and no custom colours. Files from a newer version are refused with a message.
+
+## M8: note lists and the hover panel
+
+- **Note lists.** Under each idea's free-form notes, add a list of items. Show it as **• Bullets** or **☐ Checkboxes** with the switch in the notes pane; switching keeps every item's tick. In the list, `Enter` adds an item below, `Backspace` on an empty item removes it, and `Alt+↑` / `Alt+↓` moves it. Ticked items are dimmed in place, with no counts.
+- **Idea panel.** Rest the pointer on an idea that has notes or a list. After a short pause a glass panel appears beside the cursor and follows it, flipping to the left near the window's edge. It is view-only; edit in the notes pane. With reduce motion on, it appears instantly.
+- **Map file schema v3.** Saves write `schema_version: 3`, which adds each idea's list and list style. **Versions 1 and 2 still open**, with empty lists in bullets style. Files from a newer version are refused with a message.
 
 ## Decisions on the spec's open questions (§14)
 

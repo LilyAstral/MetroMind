@@ -7,6 +7,11 @@ const SHORTCUTS: &[(&str, &str)] = &[
     ("New idea on a line", "Double-click a line"),
     ("Rename", "F2, double-click, or just start typing"),
     ("Notes", "Enter"),
+    (
+        "List items",
+        "Enter adds · Backspace on empty removes · Alt+↑/↓ moves",
+    ),
+    ("Idea panel", "Rest the pointer on an idea"),
     ("Move", "Drag (snaps to the grid)"),
     ("Move several", "Drag any selected idea (they all move)"),
     (
