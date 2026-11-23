@@ -140,6 +140,7 @@ impl MetroMindApp {
                 .interaction
                 .marquee
                 .map(|(a, b)| Rect::from_two_pos(a, b)),
+            highlight: self.interaction.highlighted_line(),
             connect: self
                 .interaction
                 .connect
@@ -149,7 +150,7 @@ impl MetroMindApp {
     }
 
     fn draw(&mut self, ui: &mut Ui, rect: Rect) {
-        let field = self.settings.layers.field.then(|| {
+        let field = self.settings.views.field.then(|| {
             let key = FieldKey {
                 revision: self.doc.revision,
                 minute: self.clock.now().timestamp() / 60,
@@ -168,7 +169,7 @@ impl MetroMindApp {
         render::draw_all(
             &painter,
             &self.plan,
-            self.settings.layers,
+            self.settings.views,
             &self.theme,
             textures,
         );

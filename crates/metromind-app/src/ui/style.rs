@@ -9,7 +9,7 @@ const PANEL: Color32 = Color32::from_rgb(33, 37, 44);
 const FIELD: Color32 = Color32::from_rgb(22, 24, 30);
 const WIDGET: Color32 = Color32::from_rgb(46, 51, 60);
 const WIDGET_HOVER: Color32 = Color32::from_rgb(58, 65, 77);
-const ACCENT: Color32 = Color32::from_rgb(142, 197, 232);
+pub const ACCENT: Color32 = Color32::from_rgb(142, 197, 232);
 const TEXT: Color32 = Color32::from_rgb(237, 230, 218);
 
 pub fn apply(ctx: &Context) {

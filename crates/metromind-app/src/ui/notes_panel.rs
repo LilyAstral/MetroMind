@@ -123,7 +123,7 @@ fn lines_on(ui: &mut Ui, station: StationId, map: &MetroMap) {
         for line in lines {
             ui.label(
                 RichText::new(&line.name)
-                    .color(line_color(line.color_index))
+                    .color(line_color(map, line))
                     .strong(),
             );
         }

@@ -1,5 +1,5 @@
 use super::Theme;
-use super::colors::line_color;
+use super::colors::fade;
 use crate::frame_plan::{FramePlan, ScreenStation, to_pos2};
 use eframe::egui::{Painter, Rect, Stroke, StrokeKind, vec2};
 
@@ -23,10 +23,7 @@ pub fn draw_stations(painter: &Painter, plan: &FramePlan, theme: &Theme) {
 
 fn draw_regular(painter: &Painter, s: &ScreenStation, theme: &Theme) -> Rect {
     let center = to_pos2(s.pos);
-    let ring = match s.color_index {
-        Some(index) => line_color(index),
-        None => theme.free_station,
-    };
+    let ring = fade(s.color.unwrap_or(theme.free_station), s.dimmed);
     painter.circle_filled(center, s.radius, theme.station_fill);
     painter.circle_stroke(center, s.radius, Stroke::new(RING_WIDTH, ring));
     Rect::from_center_size(center, vec2(2.0, 2.0) * s.radius)
@@ -37,8 +34,8 @@ fn draw_interchange(painter: &Painter, s: &ScreenStation, line_width: f32, theme
     let extra = line_width * (s.line_count.saturating_sub(1)) as f32;
     let size = vec2(2.0 * s.radius + extra, 2.0 * s.radius);
     let rect = Rect::from_center_size(to_pos2(s.pos), size);
-    painter.rect_filled(rect, s.radius, theme.interchange_fill);
-    let outline = Stroke::new(OUTLINE_WIDTH, theme.interchange_outline);
+    painter.rect_filled(rect, s.radius, fade(theme.interchange_fill, s.dimmed));
+    let outline = Stroke::new(OUTLINE_WIDTH, fade(theme.interchange_outline, s.dimmed));
     painter.rect_stroke(rect, s.radius, outline, StrokeKind::Outside);
     rect
 }

@@ -4,6 +4,7 @@ use super::{
     CORNER_RADIUS_PX, CORNER_SAMPLES, PlanInput, SUBDIVIDE_STEP_PX, ScreenLine, to_pos2,
     world_position, zoom_scale,
 };
+use crate::render::colors::line_color;
 use eframe::egui::Rect;
 use metromind_core::Vec2;
 use metromind_core::geometry::{FisheyeLens, offset_polyline, round_corners, route, subdivide};
@@ -21,6 +22,7 @@ pub(super) fn build_lines(
         .map
         .segments()
         .filter_map(|segment| {
+            let line = input.map.lines.get(&segment.line)?;
             let (lo, hi) = canonical_pair(segment.from, segment.to);
             let view = |id| {
                 let station = input.map.stations.get(&id)?;
@@ -35,7 +37,8 @@ pub(super) fn build_lines(
             }
             Some(ScreenLine {
                 line: segment.line,
-                color_index: segment.color_index,
+                color: line_color(input.map, line),
+                dimmed: input.highlight.is_some_and(|h| h != segment.line),
                 insert_at: segment.index + 1,
                 points: distort(&points, lens, min, max),
             })

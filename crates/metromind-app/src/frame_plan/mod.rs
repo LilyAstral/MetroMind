@@ -10,7 +10,7 @@ mod stations;
 mod tests;
 
 use crate::input::StationDrag;
-use eframe::egui::{Pos2, Rect, pos2};
+use eframe::egui::{Color32, Pos2, Rect, pos2};
 use metromind_core::Vec2;
 use metromind_core::chrono::{DateTime, Utc};
 use metromind_core::energy::EnergySettings;
@@ -53,6 +53,8 @@ pub struct PlanInput<'a> {
     pub marquee: Option<Rect>,
     /// The station a connection drag started from, and the pointer.
     pub connect: Option<(StationId, Pos2)>,
+    /// The line to highlight; everything else is dimmed.
+    pub highlight: Option<LineId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,7 +68,8 @@ pub struct ScreenStation {
     pub is_interchange: bool,
     pub line_count: usize,
     /// Color of the first line through the station, if any.
-    pub color_index: Option<u8>,
+    pub color: Option<Color32>,
+    pub dimmed: bool,
     /// In the selection (drawn with a ring).
     pub selected: bool,
     /// The primary station of the selection.
@@ -78,7 +81,8 @@ pub struct ScreenStation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScreenLine {
     pub line: LineId,
-    pub color_index: u8,
+    pub color: Color32,
+    pub dimmed: bool,
     /// Where a station inserted on this segment goes in the line.
     pub insert_at: usize,
     pub points: Vec<Vec2>,

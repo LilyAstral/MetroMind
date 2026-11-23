@@ -4,9 +4,11 @@ use super::{
     BASE_FONT_PX, HOT_LABEL_ENERGY, LABEL_THRESHOLD, MAX_LABEL_SCALE, MIN_HIT_SCALE, PlanInput,
     STATION_RADIUS, ScreenLabel, ScreenStation, world_position, zoom_scale,
 };
+use crate::render::colors::line_color;
+use eframe::egui::Color32;
 use metromind_core::Vec2;
 use metromind_core::geometry::FisheyeLens;
-use metromind_core::model::{MetroMap, StationId};
+use metromind_core::model::{LineId, MetroMap, StationId};
 use std::collections::BTreeMap;
 
 pub(super) fn build_stations(input: &PlanInput, lens: FisheyeLens) -> Vec<ScreenStation> {
@@ -33,7 +35,10 @@ pub(super) fn build_stations(input: &PlanInput, lens: FisheyeLens) -> Vec<Screen
                 energy: energy as f32,
                 is_interchange: line_count >= 2,
                 line_count,
-                color_index: colors.get(&station.id).copied(),
+                color: colors.get(&station.id).copied(),
+                dimmed: input
+                    .highlight
+                    .is_some_and(|h| !on_line(input.map, h, station.id)),
                 selected: input.selection.contains(&station.id),
                 primary: input.primary == Some(station.id),
                 hovered: input.hovered == Some(station.id),
@@ -42,11 +47,12 @@ pub(super) fn build_stations(input: &PlanInput, lens: FisheyeLens) -> Vec<Screen
         .collect()
 }
 
-fn first_line_colors(map: &MetroMap) -> BTreeMap<StationId, u8> {
+/// The colour of the first line (in line order) through each station.
+fn first_line_colors(map: &MetroMap) -> BTreeMap<StationId, Color32> {
     let mut colors = BTreeMap::new();
-    for line in map.lines.values() {
+    for line in map.ordered_lines() {
         for &id in &line.stations {
-            colors.entry(id).or_insert(line.color_index);
+            colors.entry(id).or_insert_with(|| line_color(map, line));
         }
     }
     colors
@@ -73,4 +79,8 @@ pub(super) fn build_labels(input: &PlanInput, stations: &[ScreenStation]) -> Vec
             })
         })
         .collect()
+}
+
+fn on_line(map: &MetroMap, line: LineId, station: StationId) -> bool {
+    map.lines.get(&line).is_some_and(|l| l.contains(station))
 }

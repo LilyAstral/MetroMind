@@ -2,7 +2,8 @@
 //! connection, where the highlight starts and moves, and the edit a pick makes.
 //! Drawing lives in `picker_view.rs`.
 
-use eframe::egui::Pos2;
+use crate::render::colors::line_color;
+use eframe::egui::{Color32, Pos2};
 use metromind_core::Vec2;
 use metromind_core::editing::{
     ConnectRefusal, Edit, branch, branch_new_line, connect, connect_new_line,
@@ -42,7 +43,7 @@ pub struct Row {
     pub choice: Choice,
     pub name: String,
     /// Colour of the swatch; `None` for "New line".
-    pub color_index: Option<u8>,
+    pub color: Option<Color32>,
     /// Why this row is greyed out, if it is.
     pub refusal: Option<String>,
 }
@@ -60,14 +61,14 @@ pub fn rows(map: &MetroMap, picker: &Picker) -> Vec<Row> {
         .map(|line| Row {
             choice: Choice::Line(line.id),
             name: line.name.clone(),
-            color_index: Some(line.color_index),
+            color: Some(line_color(map, line)),
             refusal: line_refusal(map, picker, line),
         })
         .collect();
     rows.push(Row {
         choice: Choice::New,
         name: "New line".into(),
-        color_index: None,
+        color: None,
         refusal: new_line_refusal(map, picker),
     });
     rows

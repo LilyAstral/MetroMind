@@ -1,6 +1,6 @@
 //! Per-user view settings, stored with eframe's persistence (not in the map file).
 
-use crate::render::LayerVisibility;
+use crate::render::ViewVisibility;
 use metromind_core::energy::EnergySettings;
 use metromind_core::geometry::{Camera, FisheyeLens};
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,8 @@ pub struct AppSettings {
     /// Radius and strength persist; the focus simply follows the cursor.
     pub lens: FisheyeLens,
     pub lens_enabled: bool,
-    pub layers: LayerVisibility,
+    #[serde(alias = "layers")]
+    pub views: ViewVisibility,
     pub last_file: Option<PathBuf>,
     /// Turns off lens smoothing for people who find motion distracting.
     pub reduce_motion: bool,
@@ -30,7 +31,7 @@ impl Default for AppSettings {
             camera: Camera::default(),
             lens: FisheyeLens::default(),
             lens_enabled: true,
-            layers: LayerVisibility::default(),
+            views: ViewVisibility::default(),
             last_file: None,
             reduce_motion: false,
             show_side_panel: true,

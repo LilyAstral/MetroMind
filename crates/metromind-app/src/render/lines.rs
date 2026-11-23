@@ -1,5 +1,5 @@
 use super::Theme;
-use super::colors::line_color;
+use super::colors::fade;
 use crate::frame_plan::{FramePlan, to_pos2};
 use eframe::egui::{Painter, Shape, Stroke};
 
@@ -7,7 +7,7 @@ use eframe::egui::{Painter, Shape, Stroke};
 pub fn draw_lines(painter: &Painter, plan: &FramePlan, _theme: &Theme) {
     for line in &plan.lines {
         let points = line.points.iter().copied().map(to_pos2).collect();
-        let stroke = Stroke::new(plan.line_width, line_color(line.color_index));
+        let stroke = Stroke::new(plan.line_width, fade(line.color, line.dimmed));
         painter.add(Shape::line(points, stroke));
     }
 }

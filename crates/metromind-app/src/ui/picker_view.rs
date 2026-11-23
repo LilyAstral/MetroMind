@@ -1,7 +1,6 @@
 //! Drawing the line picker: a small rounded panel at the release point.
 
 use super::picker::{Choice, Picker, Row};
-use crate::render::colors::line_color;
 use eframe::egui::{
     Align2, Area, Color32, Context, FontId, Frame, Id, Order, Pos2, Rect, Response, Sense, Stroke,
     Ui, Vec2, pos2, vec2,
@@ -82,9 +81,9 @@ fn row_ui(ui: &mut Ui, index: usize, row: &Row, highlighted: bool) -> Response {
     }
     let dim = if valid { 1.0 } else { 0.35 };
     let center = rect.left_center() + vec2(TEXT_INSET / 2.0, 0.0);
-    match row.color_index {
-        Some(color) => {
-            painter.circle_filled(center, SWATCH_RADIUS, line_color(color).gamma_multiply(dim));
+    match row.color {
+        Some(swatch) => {
+            painter.circle_filled(center, SWATCH_RADIUS, swatch.gamma_multiply(dim));
         }
         None => {
             painter.circle_stroke(center, SWATCH_RADIUS, Stroke::new(1.5, DIM));

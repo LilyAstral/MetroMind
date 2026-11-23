@@ -19,8 +19,7 @@ use crate::input::{Command, Interaction};
 use crate::render::{self, Theme, field::FieldCache};
 use crate::settings::AppSettings;
 use crate::ui::{
-    self, layers_panel::LineNameDrafts, notes_panel::NotesState, rename::RenameState,
-    status::Status,
+    self, line_rows::LineNameDrafts, notes_panel::NotesState, rename::RenameState, status::Status,
 };
 use eframe::egui::{self, Context, TextureHandle, TextureOptions, Ui};
 use metromind_core::clock::SystemClock;
@@ -114,8 +113,14 @@ impl MetroMindApp {
                 .then_some((self.settings.lens.strength, self.settings.lens.radius)),
         };
         ui::status::show(ui, &self.status, &info, &self.theme);
-        let edits =
-            ui::layers_panel::show(ui, &mut self.settings, &self.doc.map, &mut self.line_drafts);
+        let edits = ui::side_panel::show(
+            ui,
+            &mut self.settings,
+            &self.doc.map,
+            &mut self.line_drafts,
+            self.interaction.highlight,
+            &mut self.queued_commands,
+        );
         self.queued_edits.extend(edits);
         self.notes_panel(ui);
     }

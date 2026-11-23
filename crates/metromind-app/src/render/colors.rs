@@ -1,20 +1,9 @@
 //! Palette and theme. Dark, calm, pastel; red never appears, because red reads
 //! as an error or "overdue" — exactly the shame signal MetroMind avoids.
 
+use super::palettes::palette;
 use eframe::egui::Color32;
-
-/// Pastel line colors, one per number key. Blues, browns and oranges first.
-pub const LINE_COLORS: [Color32; 9] = [
-    Color32::from_rgb(142, 197, 232), // pastel blue
-    Color32::from_rgb(244, 177, 131), // peach orange
-    Color32::from_rgb(200, 162, 124), // tan brown
-    Color32::from_rgb(143, 209, 193), // sage teal
-    Color32::from_rgb(185, 169, 230), // lavender
-    Color32::from_rgb(235, 213, 142), // butter
-    Color32::from_rgb(168, 221, 160), // mint
-    Color32::from_rgb(169, 184, 216), // steel blue
-    Color32::from_rgb(227, 201, 168), // sand
-];
+use metromind_core::model::{Line, MetroMap};
 
 /// Energy ramp stops, cool → warm: slate blue (cold) → teal → amber (hot).
 const ENERGY_STOPS: [(f32, Color32); 3] = [
@@ -23,8 +12,22 @@ const ENERGY_STOPS: [(f32, Color32); 3] = [
     (1.0, Color32::from_rgb(242, 180, 90)),
 ];
 
-pub fn line_color(index: u8) -> Color32 {
-    LINE_COLORS[usize::from(index) % LINE_COLORS.len()]
+/// The colour a line is drawn in: its custom colour if it has one, else its
+/// slot in the map's palette.
+pub fn line_color(map: &MetroMap, line: &Line) -> Color32 {
+    match line.custom_color {
+        Some([r, g, b]) => Color32::from_rgb(r, g, b),
+        None => palette(map.palette).colors[usize::from(line.color_index) % 9],
+    }
+}
+
+/// Dimmed items (a line that isn't highlighted) are drawn at 35% alpha.
+pub fn fade(color: Color32, dimmed: bool) -> Color32 {
+    if dimmed {
+        with_alpha(color, 0.35)
+    } else {
+        color
+    }
 }
 
 /// Color temperature for energy `e` in 0..=1 (clamped). Never red.
@@ -109,18 +112,13 @@ mod tests {
 
     #[test]
     fn no_red_anywhere() {
-        let ramp = (0..=100).map(|i| energy_color(i as f32 / 100.0));
-        assert!(ramp.chain(LINE_COLORS).all(|c| !is_reddish(c)));
+        let mut ramp = (0..=100).map(|i| energy_color(i as f32 / 100.0));
+        assert!(ramp.all(|c| !is_reddish(c)));
     }
 
     #[test]
     fn hot_is_warmer_than_cold() {
         let (cold, hot) = (energy_color(0.0), energy_color(1.0));
         assert!(hot.r() > cold.r() && hot.b() < cold.b());
-    }
-
-    #[test]
-    fn line_colors_wrap() {
-        assert_eq!(line_color(9), line_color(0));
     }
 }

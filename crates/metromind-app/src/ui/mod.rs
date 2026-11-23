@@ -3,14 +3,17 @@
 
 pub mod context_menu;
 pub mod help;
-pub mod layers_panel;
+pub mod line_rows;
 pub mod menu;
 pub mod notes_panel;
+pub mod palette_row;
 pub mod picker;
 pub mod picker_view;
 pub mod rename;
+pub mod side_panel;
 pub mod status;
 pub mod style;
+pub mod swatch;
 
 use crate::render::Theme;
 use eframe::egui::{Align2, FontId, Painter, Rect, vec2};

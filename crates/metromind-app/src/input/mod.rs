@@ -32,11 +32,20 @@ pub struct Interaction {
     pub marquee: Option<(Pos2, Pos2)>,
     /// A text box (rename, notes, line name) owns the keyboard.
     pub typing: bool,
+    /// A line locked as highlighted (by clicking its number or a context menu).
+    pub highlight: Option<LineId>,
+    /// A line the pointer is over in the side panel.
+    pub hover_line: Option<LineId>,
 }
 
 impl Interaction {
     pub fn is_selected(&self, id: StationId) -> bool {
         self.selection.contains(&id)
+    }
+
+    /// The line to highlight this frame: hover wins over the locked one.
+    pub fn highlighted_line(&self) -> Option<LineId> {
+        self.hover_line.or(self.highlight)
     }
 }
 
@@ -95,6 +104,10 @@ pub enum Command {
     Connect(Option<ConnectDrag>),
     /// Something to do to the selection, from a key or a context menu.
     Act(Action),
+    /// Lock a line as highlighted, or clear it.
+    HighlightLine(Option<LineId>),
+    /// The side panel reports the line under the pointer.
+    HoverLine(Option<LineId>),
     /// Create an idea at a grid spot, optionally on a segment (double-click or menu).
     NewIdea {
         spot: Vec2,

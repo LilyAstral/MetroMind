@@ -58,6 +58,7 @@ fn shortcut(
         Key::L => Command::ToggleLens,
         Key::Home => Command::FitMap,
         Key::F1 => Command::ToggleHelp,
+        Key::Escape if cx.interaction.highlight.is_some() => Command::HighlightLine(None),
         Key::Escape if !cx.interaction.selection.is_empty() => Command::Select(None),
         _ => return selection_shortcut(key, cx, out),
     };

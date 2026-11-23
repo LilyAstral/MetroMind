@@ -123,7 +123,7 @@ fn segment_menu(
     };
     ui.label(
         RichText::new(&line.name)
-            .color(line_color(line.color_index))
+            .color(line_color(data.map, line))
             .strong(),
     );
     let index = insert_at.saturating_sub(1);
@@ -137,6 +137,9 @@ fn segment_menu(
             line: line_id,
             index,
         }));
+    }
+    if item(ui, "Highlight this line", "", true) {
+        out.push(Command::HighlightLine(Some(line_id)));
     }
     if item(ui, "Insert idea here", "", true) {
         let membership = Membership {
