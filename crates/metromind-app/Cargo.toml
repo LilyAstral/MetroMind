@@ -1,0 +1,11 @@
+[package]
+name = "metromind-app"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+eframe = { version = "0.37.0", features = ["persistence"] }
+metromind-core = { version = "0.1.0", path = "../metromind-core" }
+rfd = "0.18.0"
+serde = { version = "1.0.229", features = ["derive"] }

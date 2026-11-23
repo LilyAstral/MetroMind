@@ -1,0 +1,89 @@
+//! egui input → [`Edit`]s (model changes) and [`Command`]s (view changes).
+//!
+//! Input only reads the map and last frame's plan; the app applies the result.
+
+mod keys;
+mod pointer;
+
+use crate::frame_plan::FramePlan;
+use eframe::egui::{Context, Response};
+use metromind_core::Vec2;
+use metromind_core::chrono::{DateTime, Utc};
+use metromind_core::editing::Edit;
+use metromind_core::energy::{EnergySettings, Touch};
+use metromind_core::model::{MetroMap, StationId};
+
+/// View state that input needs to interpret gestures.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Interaction {
+    pub selected: Option<StationId>,
+    pub hovered: Option<StationId>,
+    pub drag: Option<StationDrag>,
+    /// A text box (rename, notes, line name) owns the keyboard.
+    pub typing: bool,
+}
+
+/// A station being dragged. The model only changes on release.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StationDrag {
+    pub id: StationId,
+    /// Station position minus the grab point, in world units.
+    pub offset: Vec2,
+    /// Current unsnapped world position.
+    pub world: Vec2,
+    pub start: Vec2,
+}
+
+/// View-level changes. Applied by the app after this frame's edits.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Command {
+    Select(Option<StationId>),
+    Touch(StationId, Touch),
+    Drag(Option<StationDrag>),
+    Pan(Vec2),
+    Zoom { anchor: Vec2, factor: f32 },
+    AdjustLensStrength(f32),
+    AdjustLensRadius(f32),
+    ToggleLens,
+    FitMap,
+    StartRename { id: StationId, text: String },
+    OpenNotes(StationId),
+    Undo,
+    Redo,
+    NewMap,
+    Open,
+    Save,
+    SaveAs,
+    LoadSample,
+    ToggleHelp,
+    Notice(String),
+}
+
+#[derive(Debug, Default)]
+pub struct InputOutcome {
+    pub edits: Vec<Edit>,
+    pub commands: Vec<Command>,
+    pub hovered: Option<StationId>,
+    /// Space is held: the lens stays where it is.
+    pub pin_lens: bool,
+}
+
+/// Everything input reads, bundled to keep signatures short.
+pub struct InputContext<'a> {
+    pub plan: &'a FramePlan,
+    pub map: &'a MetroMap,
+    pub interaction: Interaction,
+    pub now: DateTime<Utc>,
+    pub energy: &'a EnergySettings,
+}
+
+/// Read this frame's input on the map area. Keyboard shortcuts are skipped
+/// while any text box has focus, so typing never triggers them.
+pub fn collect(ctx: &Context, map_response: &Response, cx: &InputContext) -> InputOutcome {
+    let mut out = InputOutcome::default();
+    pointer::collect(ctx, map_response, cx, &mut out);
+    if !cx.interaction.typing && !ctx.egui_wants_keyboard_input() {
+        keys::collect(ctx, cx, &mut out);
+    }
+    out
+}

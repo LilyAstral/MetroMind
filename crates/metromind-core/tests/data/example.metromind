@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "next_id": 6,
+  "stations": {
+    "1": { "id": 1, "title": "Offline mode", "notes": "",
+           "position": [120.0, 80.0],
+           "energy_at_touch": 0.72,
+           "last_touched": "2026-11-23T10:40:00Z",
+           "created": "2026-11-20T08:00:00Z" },
+    "4": { "id": 4, "title": "Conflict resolution", "notes": "Last writer wins?",
+           "position": [280.0, 80.0],
+           "energy_at_touch": 0.3,
+           "last_touched": "2026-11-21T09:00:00Z",
+           "created": "2026-11-20T08:05:00Z" }
+  },
+  "lines": {
+    "2": { "id": 2, "name": "Sync", "color_index": 0, "stations": [1, 4] }
+  }
+}
