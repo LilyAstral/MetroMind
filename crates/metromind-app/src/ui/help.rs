@@ -2,18 +2,31 @@
 
 use eframe::egui::{self, Context, Grid, RichText};
 
-const SHORTCUTS: [(&str, &str); 20] = [
+const SHORTCUTS: &[(&str, &str)] = &[
     ("New idea", "Double-click empty space"),
     ("New idea on a line", "Double-click a line"),
     ("Rename", "F2, double-click, or just start typing"),
     ("Notes", "Enter"),
     ("Move", "Drag (snaps to the grid)"),
-    ("Add to line", "1–9"),
+    ("Move several", "Drag any selected idea (they all move)"),
+    (
+        "Connect to another idea",
+        "Right-drag onto it, then pick a line",
+    ),
+    (
+        "Branch off an idea",
+        "Right-drag onto empty space, then pick a line",
+    ),
+    ("Context menu", "Right-click"),
+    ("Select several", "Shift + drag a box, or Shift + click"),
+    ("Add to line", "1–9 (applies to the whole selection)"),
     ("Start a new line here", "N"),
     ("Remove from line", "Shift + line number"),
     ("Delete", "Del"),
     ("Rekindle", "R"),
-    ("Deselect", "Esc"),
+    ("Select all", "Ctrl+A"),
+    ("Find an idea", "Ctrl+F, then Enter to jump"),
+    ("Clear selection or highlight", "Esc"),
     ("Pan", "Drag empty space, middle- or right-drag"),
     ("Zoom", "Mouse wheel"),
     ("Lens on/off", "L"),
@@ -40,7 +53,7 @@ pub fn show(ctx: &Context, open: &mut bool) {
                 .striped(true)
                 .spacing([24.0, 6.0])
                 .show(ui, |ui| {
-                    for (action, keys) in SHORTCUTS {
+                    for &(action, keys) in SHORTCUTS {
                         ui.label(action);
                         ui.label(RichText::new(keys).strong());
                         ui.end_row();

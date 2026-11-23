@@ -2,6 +2,7 @@
 //!
 //! Input only reads the map and last frame's plan; the app applies the result.
 
+mod connect;
 mod keys;
 mod picker;
 mod pointer;

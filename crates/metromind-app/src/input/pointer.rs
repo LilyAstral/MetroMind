@@ -1,6 +1,6 @@
-use super::{Command, ConnectDrag, InputContext, InputOutcome, StationDrag};
+use super::connect::{begin_connect, continue_connect};
+use super::{Command, InputContext, InputOutcome, StationDrag};
 use crate::frame_plan::to_vec2;
-use crate::ui::picker::{Picker, Target};
 use eframe::egui::{Context, Event, MouseWheelUnit, PointerButton, Pos2, Rect, Response};
 use metromind_core::Vec2;
 use metromind_core::editing::{Edit, Membership};
@@ -93,68 +93,6 @@ fn drags(ctx: &Context, response: &Response, cx: &InputContext, out: &mut InputO
         let delta = response.drag_delta();
         out.commands.push(Command::Pan(Vec2::new(delta.x, delta.y)));
     }
-}
-
-/// A right-drag that starts on a station begins a connection. On empty space
-/// it pans, so this returns `false` there.
-fn begin_connect(ctx: &Context, cx: &InputContext, out: &mut InputOutcome) -> bool {
-    let Some(origin) = ctx.input(|i| i.pointer.press_origin()) else {
-        return false;
-    };
-    let Some(from) = cx.plan.station_at(origin) else {
-        return false;
-    };
-    let connect = ConnectDrag {
-        from,
-        pointer: origin,
-    };
-    out.commands.push(Command::Connect(Some(connect)));
-    true
-}
-
-fn continue_connect(
-    connect: &ConnectDrag,
-    response: &Response,
-    cx: &InputContext,
-    out: &mut InputOutcome,
-) {
-    let pointer = response.interact_pointer_pos().unwrap_or(connect.pointer);
-    if response.drag_stopped_by(PointerButton::Secondary) {
-        finish_connect(connect.from, pointer, cx, out);
-    } else {
-        let moved = ConnectDrag {
-            pointer,
-            ..connect.clone()
-        };
-        out.commands.push(Command::Connect(Some(moved)));
-    }
-}
-
-/// Released on another station: pick a line to connect to. Released on empty
-/// space: pick a line to branch onto, at the grid-snapped spot (or connect to
-/// the station already there). Released on the origin: nothing happens.
-fn finish_connect(from: StationId, pointer: Pos2, cx: &InputContext, out: &mut InputOutcome) {
-    out.commands.push(Command::Connect(None));
-    let target = match cx.plan.station_at(pointer) {
-        Some(hit) => Target::Station(hit),
-        None => {
-            let spot = snap_to_grid(cx.plan.camera.view_to_world(to_vec2(pointer)), GRID_CELL);
-            cx.map
-                .stations
-                .values()
-                .find(|s| s.position == spot)
-                .map_or(Target::Spot(spot), |s| Target::Station(s.id))
-        }
-    };
-    if target == Target::Station(from) {
-        return;
-    }
-    out.commands.push(Command::OpenPicker(Picker {
-        origin: from,
-        target,
-        anchor: pointer,
-        highlight: 0,
-    }));
 }
 
 /// Start a station drag or a box select at `origin`. Returns `false` when the

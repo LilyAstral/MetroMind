@@ -13,6 +13,7 @@ mod files;
 mod map_view;
 mod navigation;
 mod picker;
+mod selection;
 
 use crate::document::Document;
 use crate::frame_plan::{FramePlan, to_pos2};

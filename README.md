@@ -34,9 +34,14 @@ cargo test --release -p metromind-app -- --ignored --nocapture
 | New idea on a line | Double-click a line (inserts between its two stations) |
 | Rename | `F2`, double-click the station, or just start typing |
 | Notes | `Enter` (opens the right-hand pane) |
-| Move | Drag (snaps to the 40-unit grid on release) |
-| Add to line / new line / remove | `1`–`9` / `N` / `Shift` + number |
-| Delete · rekindle · deselect | `Del` · `R` · `Esc` |
+| Move | Drag (snaps to the 40-unit grid on release); drag a selected idea to move the whole selection |
+| Connect to an idea · branch off one | Right-drag from an idea onto another idea (connect) or onto empty space (branch), then pick a line |
+| Context menu | Right-click an idea, a segment, or empty space |
+| Select several | `Shift` + drag a box · `Shift` + click |
+| Add to line / new line / remove | `1`–`9` / `N` / `Shift` + number (these act on the whole selection, except `N`) |
+| Delete · rekindle | `Del` · `R` (both act on the whole selection) |
+| Select all · find | `Ctrl+A` · `Ctrl+F` (then `Enter` to jump) |
+| Clear selection or highlight | `Esc` |
 | Pan · zoom | Drag empty space (or middle/right-drag) · wheel |
 | Lens on/off · pin | `L` · hold `Space` |
 | Lens strength · radius | `Ctrl` + wheel · `Shift` + wheel |
@@ -44,7 +49,7 @@ cargo test --release -p metromind-app -- --ignored --nocapture
 | New · open · save · save as | `Ctrl+N` · `Ctrl+O` · `Ctrl+S` · `Ctrl+Shift+S` |
 | Fit whole map · shortcuts | `Home` · `F1` |
 
-Every action is also in the menu bar. **File → Load sample map** shows a ready-made brainstorm with 3 lines and 20 stations.
+Every action is also in the menu bar and the right-click menus. **File → Load sample map** shows a ready-made brainstorm with 3 lines and 20 stations.
 
 ## Layout
 
@@ -71,6 +76,14 @@ crates/
 
 Data flows one way: input → `Edit` → model → this frame's `FramePlan` → render. Render code never touches `MetroMap`. Saving writes `<name>.metromind.tmp` and then renames it over the original, so a crash can't corrupt a map. Autosave runs 2 seconds after the last change.
 
+## M7: connect, select, and organize
+
+- **Connect and branch.** Right-drag from an idea onto another idea to connect them, or onto empty space to branch off a new idea. A line picker opens: scroll with the wheel, click a line, or press `1`–`9`, `N` (new line), or `Enter`. Lines that can't take the connection are greyed out with the reason.
+- **Remove connection.** Right-click a segment. Cutting the end of a line just shortens it; cutting the middle **splits the line in two**. Undo restores it.
+- **Views.** The side panel's "Layers" section is now **Views**. Lines can be reordered with ▲ / ▼, and the number keys follow that order. Clicking a line's number highlights it on the map.
+- **Palettes and colours.** Six palettes, shown as striped icons above the line list. Clicking a line's colour swatch picks a custom colour; ↺ returns it to the palette colour.
+- **Map file schema v2.** Saves write `schema_version: 2`, which adds `line_order`, `palette`, and each line's `custom_color`. **Version 1 files still open.** On load their lines take ascending ID order, the Pastel palette, and no custom colours. Files from a newer version are refused with a message.
+
 ## Decisions on the spec's open questions (§14)
 
 1. **Energy half-life** is one global setting, part of `EnergySettings` inside `AppSettings`. It's easy to move into the map file later.
@@ -93,6 +106,7 @@ Data flows one way: input → `Edit` → model → this frame's `FramePlan` → 
   - The sample map only loads into an empty map, so it can't overwrite ideas.
   - A file other than the last one opens fitted to the window.
 - **Lens off** is represented as strength 0 (the identity), so there's one code path.
+- **M7 deviations.** Palette icons are square stripes with square corners (the 4 px rounding isn't drawn). Each change in the colour picker is its own undo step, so one colour pick can take several undos.
 
 ## Performance
 

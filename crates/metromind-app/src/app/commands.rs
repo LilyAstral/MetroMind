@@ -10,7 +10,6 @@ use metromind_core::editing::Edit;
 use metromind_core::energy::Touch;
 use metromind_core::geometry::Camera;
 use metromind_core::model::StationId;
-use std::collections::BTreeSet;
 
 /// Empty space kept around the map by "Fit whole map".
 const FIT_MARGIN: f32 = 80.0;
@@ -74,66 +73,6 @@ impl MetroMindApp {
         }
     }
 
-    /// Replace the selection with one station, or clear it.
-    pub(super) fn select_only(&mut self, id: Option<StationId>) {
-        self.set_selection(id.into_iter().collect(), id);
-    }
-
-    /// Shift+click: add the station to the selection, or remove it.
-    fn toggle(&mut self, id: StationId) {
-        let mut selection = self.interaction.selection.clone();
-        let primary = if selection.remove(&id) {
-            match self.interaction.primary {
-                Some(p) if p != id => Some(p),
-                _ => selection.last().copied(),
-            }
-        } else {
-            selection.insert(id);
-            Some(id)
-        };
-        self.set_selection(selection, primary);
-    }
-
-    fn add_to_selection(&mut self, ids: Vec<StationId>) {
-        if ids.is_empty() {
-            return;
-        }
-        let mut selection = self.interaction.selection.clone();
-        selection.extend(ids.iter().copied());
-        self.set_selection(selection, ids.last().copied());
-    }
-
-    fn select_all(&mut self) {
-        let selection: BTreeSet<StationId> = self.doc.map.stations.keys().copied().collect();
-        let primary = self
-            .interaction
-            .primary
-            .filter(|p| selection.contains(p))
-            .or_else(|| selection.first().copied());
-        self.set_selection(selection, primary);
-    }
-
-    /// Selecting counts as a little attention for a newly focused station.
-    /// The notes pane follows the primary station.
-    fn set_selection(&mut self, selection: BTreeSet<StationId>, primary: Option<StationId>) {
-        if self.rename.as_ref().is_some_and(|r| Some(r.id) != primary) {
-            self.finish_rename(true);
-        }
-        let changed = primary != self.interaction.primary;
-        self.interaction.selection = selection;
-        self.interaction.primary = primary;
-        match primary {
-            Some(id) if changed => {
-                self.touch(id, Touch::Select);
-                if self.notes.is_some() {
-                    self.open_notes(id);
-                }
-            }
-            Some(_) => {}
-            None => self.close_notes(),
-        }
-    }
-
     fn toggle_lens(&mut self) {
         self.settings.lens_enabled = !self.settings.lens_enabled;
         let text = if self.settings.lens_enabled {
@@ -177,7 +116,7 @@ impl MetroMindApp {
         }
     }
 
-    fn open_notes(&mut self, id: StationId) {
+    pub(super) fn open_notes(&mut self, id: StationId) {
         self.flush_notes();
         self.notes = NotesState::new(&self.doc.map, id);
     }
