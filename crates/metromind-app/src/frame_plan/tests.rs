@@ -26,6 +26,7 @@ fn plan_for(map: &MetroMap, lens_enabled: bool, selected: Option<StationId>) -> 
         selection: &selection,
         primary: selected,
         marquee: None,
+        connect: None,
         hovered: None,
         drag: None,
     })
@@ -144,6 +145,7 @@ fn bench_500_stations() {
             selection: &BTreeSet::new(),
             primary: None,
             marquee: None,
+            connect: None,
             hovered: None,
             drag: None,
         };

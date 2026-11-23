@@ -1,10 +1,13 @@
 //! Connecting, branching, disconnecting and searching, through the public API.
 
 use metromind_core::MapError;
+use metromind_core::Vec2;
 use metromind_core::chrono::DateTime;
 use metromind_core::editing::{
-    ConnectRefusal, Edit, connect, connect_new_line, disconnect, search,
+    ConnectRefusal, Edit, branch, branch_new_line, connect, connect_new_line, disconnect, search,
 };
+use metromind_core::energy::EnergySettings;
+use metromind_core::model::Station;
 use metromind_core::model::{LineId, MetroMap, StationId};
 use metromind_core::sample::sample_map;
 
@@ -234,4 +237,61 @@ fn search_ranks_prefix_then_contains_then_notes() {
 #[test]
 fn search_finds_nothing_for_an_empty_query() {
     assert!(search(&sample(), "   ", 10).is_empty());
+}
+
+#[test]
+fn branch_puts_the_new_idea_beside_its_origin_on_a_line() {
+    let mut map = sample();
+    let (line, s) = product(&map);
+    let new = Station::new(
+        StationId(map.peek_id()),
+        "Branch",
+        Vec2::ZERO,
+        DateTime::UNIX_EPOCH,
+        &EnergySettings::default(),
+    );
+    let new_id = new.id;
+    let edit = branch(&map, line, s[0], new).unwrap();
+    apply(&mut map, edit);
+    // Beside the first station, the new idea goes in front of it.
+    assert_eq!(map.lines[&line].stations[0], new_id);
+    assert_eq!(map.lines[&line].stations[1], s[0]);
+    assert!(map.validate().is_ok());
+}
+
+#[test]
+fn branch_is_refused_when_the_origin_is_not_on_the_line() {
+    let map = sample();
+    let (line, _) = product(&map);
+    let new = Station::new(
+        StationId(map.peek_id()),
+        "x",
+        Vec2::ZERO,
+        DateTime::UNIX_EPOCH,
+        &EnergySettings::default(),
+    );
+    assert_eq!(
+        branch(&map, line, StationId(18), new).err(),
+        Some(ConnectRefusal::OriginNotOnLine)
+    );
+}
+
+#[test]
+fn branch_new_line_undoes_in_one_step() {
+    let original = sample();
+    let mut map = original.clone();
+    let new = Station::new(
+        StationId(map.peek_id()),
+        "Branch",
+        Vec2::ZERO,
+        DateTime::UNIX_EPOCH,
+        &EnergySettings::default(),
+    );
+    let edit = branch_new_line(&map, StationId(18), new).unwrap();
+    let undo = edit.apply(&mut map).unwrap();
+    assert_eq!(map.line_order.len(), 4);
+    undo.apply(&mut map).unwrap();
+    assert_eq!(map.lines, original.lines);
+    assert_eq!(map.stations, original.stations);
+    assert_eq!(map.line_order, original.line_order);
 }

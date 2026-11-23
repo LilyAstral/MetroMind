@@ -5,6 +5,8 @@ pub mod help;
 pub mod layers_panel;
 pub mod menu;
 pub mod notes_panel;
+pub mod picker;
+pub mod picker_view;
 pub mod rename;
 pub mod status;
 pub mod style;

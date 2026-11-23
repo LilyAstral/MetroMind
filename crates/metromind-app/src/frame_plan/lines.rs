@@ -51,7 +51,7 @@ fn lane_offset(lanes: &[LineId], line: LineId, width: f32) -> f32 {
 }
 
 /// Subdivide only where the lens can actually bend the polyline.
-fn distort(points: &[Vec2], lens: FisheyeLens, min: Vec2, max: Vec2) -> Vec<Vec2> {
+pub(super) fn distort(points: &[Vec2], lens: FisheyeLens, min: Vec2, max: Vec2) -> Vec<Vec2> {
     if !lens.touches_box(min, max) {
         return points.to_vec();
     }
@@ -61,7 +61,7 @@ fn distort(points: &[Vec2], lens: FisheyeLens, min: Vec2, max: Vec2) -> Vec<Vec2
         .collect()
 }
 
-fn bounds(points: &[Vec2]) -> (Vec2, Vec2) {
+pub(super) fn bounds(points: &[Vec2]) -> (Vec2, Vec2) {
     let first = points.first().copied().unwrap_or(Vec2::ZERO);
     points
         .iter()

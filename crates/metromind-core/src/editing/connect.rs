@@ -1,8 +1,8 @@
 //! Rules for connecting stations to lines, and for cutting a connection.
 //! Each function returns the [`Edit`] to apply, or a calm refusal.
 
-use super::Edit;
-use crate::model::{Line, LineId, MetroMap, StationId};
+use super::{Edit, Membership};
+use crate::model::{Line, LineId, MetroMap, Station, StationId};
 
 /// Why a connection can't be made. [`Self::reason`] gives the text shown to
 /// the user.
@@ -14,6 +14,7 @@ pub enum ConnectRefusal {
     NoFreeLine,
     NoSuchSegment,
     CannotSplit,
+    OriginNotOnLine,
 }
 
 impl ConnectRefusal {
@@ -25,6 +26,7 @@ impl ConnectRefusal {
             Self::NoFreeLine => "All 9 lines are in use".into(),
             Self::NoSuchSegment => "There's no connection here".into(),
             Self::CannotSplit => "All 9 lines are in use, so this line can't be split.".into(),
+            Self::OriginNotOnLine => format!("This idea isn't on {line_name}"),
         }
     }
 }
@@ -69,12 +71,60 @@ pub fn connect_new_line(
     a: StationId,
     b: StationId,
 ) -> Result<Edit, ConnectRefusal> {
+    create_pair_line(map, map.peek_id(), vec![a, b])
+}
+
+/// Branch off `origin` onto `line`: `new` joins the line right beside
+/// `origin`. Fails if `origin` isn't on the line.
+pub fn branch(
+    map: &MetroMap,
+    line: LineId,
+    origin: StationId,
+    new: Station,
+) -> Result<Edit, ConnectRefusal> {
+    let source = map.lines.get(&line).ok_or(ConnectRefusal::NoSuchLine)?;
+    if !source.contains(origin) {
+        return Err(ConnectRefusal::OriginNotOnLine);
+    }
+    let index = anchor_index(source, origin);
+    Ok(Edit::AddStation {
+        station: new,
+        memberships: vec![Membership { line, index }],
+    })
+}
+
+/// Branch off `origin` onto a new two-station line. The new station is
+/// added in the same batch, so one undo removes both.
+pub fn branch_new_line(
+    map: &MetroMap,
+    origin: StationId,
+    new: Station,
+) -> Result<Edit, ConnectRefusal> {
+    let new_id = new.id;
+    // The new station takes its ID first, so the line gets the next one after it.
+    let line_id = map.peek_id().max(new_id.0 + 1);
+    let line = create_pair_line(map, line_id, vec![origin, new_id])?;
+    Ok(Edit::Batch(vec![
+        Edit::AddStation {
+            station: new,
+            memberships: Vec::new(),
+        },
+        line,
+    ]))
+}
+
+/// A line with `stations`, the next free colour, the next name, at the end.
+fn create_pair_line(
+    map: &MetroMap,
+    id: u64,
+    stations: Vec<StationId>,
+) -> Result<Edit, ConnectRefusal> {
     let color_index = map.free_color_index().ok_or(ConnectRefusal::NoFreeLine)?;
     let line = Line {
-        id: LineId(map.peek_id()),
+        id: LineId(id),
         name: format!("Line {}", map.lines.len() + 1),
         color_index,
-        stations: vec![a, b],
+        stations,
         custom_color: None,
     };
     Ok(Edit::CreateLine {

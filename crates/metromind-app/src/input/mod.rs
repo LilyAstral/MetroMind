@@ -3,9 +3,11 @@
 //! Input only reads the map and last frame's plan; the app applies the result.
 
 mod keys;
+mod picker;
 mod pointer;
 
 use crate::frame_plan::FramePlan;
+use crate::ui::picker::Picker;
 use eframe::egui::{Context, Pos2, Response};
 use metromind_core::Vec2;
 use metromind_core::chrono::{DateTime, Utc};
@@ -23,6 +25,10 @@ pub struct Interaction {
     pub primary: Option<StationId>,
     pub hovered: Option<StationId>,
     pub drag: Option<StationDrag>,
+    /// A right-drag from a station that is connecting or branching.
+    pub connect: Option<ConnectDrag>,
+    /// The line picker, open after a connection drag is released.
+    pub picker: Option<Picker>,
     /// A Shift+drag selection box: where it started and where the pointer is.
     pub marquee: Option<(Pos2, Pos2)>,
     /// A text box (rename, notes, line name) owns the keyboard.
@@ -33,6 +39,13 @@ impl Interaction {
     pub fn is_selected(&self, id: StationId) -> bool {
         self.selection.contains(&id)
     }
+}
+
+/// A connection drag in progress.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConnectDrag {
+    pub from: StationId,
+    pub pointer: Pos2,
 }
 
 /// Stations being dragged together. The model only changes on release.
@@ -60,6 +73,11 @@ pub enum Command {
     Marquee(Option<(Pos2, Pos2)>),
     Touch(StationId, Touch),
     Drag(Option<StationDrag>),
+    Connect(Option<ConnectDrag>),
+    OpenPicker(Picker),
+    PickerStep(i32),
+    PickerPick(usize),
+    PickerCancel,
     Pan(Vec2),
     Zoom {
         anchor: Vec2,
@@ -107,6 +125,10 @@ pub struct InputContext<'a> {
 /// while any text box has focus, so typing never triggers them.
 pub fn collect(ctx: &Context, map_response: &Response, cx: &InputContext) -> InputOutcome {
     let mut out = InputOutcome::default();
+    if let Some(picker) = &cx.interaction.picker {
+        picker::collect(ctx, cx, picker, &mut out);
+        return out;
+    }
     pointer::collect(ctx, map_response, cx, &mut out);
     if !cx.interaction.typing && !ctx.egui_wants_keyboard_input() {
         keys::collect(ctx, cx, &mut out);

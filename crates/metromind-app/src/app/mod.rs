@@ -10,6 +10,7 @@
 mod commands;
 mod files;
 mod map_view;
+mod picker;
 
 use crate::document::Document;
 use crate::frame_plan::{FramePlan, to_pos2};

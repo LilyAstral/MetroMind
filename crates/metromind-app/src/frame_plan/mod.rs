@@ -1,6 +1,7 @@
 //! map + camera + lens + clock → [`FramePlan`]: everything a frame draws, in
 //! screen space, computed once. Layers and hit testing only read it.
 
+mod connector;
 mod ghosts;
 mod grid;
 mod lines;
@@ -50,6 +51,8 @@ pub struct PlanInput<'a> {
     /// Stations being dragged, with the unsnapped pointer movement.
     pub drag: Option<&'a StationDrag>,
     pub marquee: Option<Rect>,
+    /// The station a connection drag started from, and the pointer.
+    pub connect: Option<(StationId, Pos2)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -110,6 +113,8 @@ pub struct FramePlan {
     /// Where stations being dragged will land (snapped, through the lens).
     pub ghosts: Vec<Vec2>,
     pub marquee: Option<Rect>,
+    /// The dashed preview of a connection drag, in screen space.
+    pub connector: Option<Vec<Vec2>>,
 }
 
 impl Default for FramePlan {
@@ -126,6 +131,7 @@ impl Default for FramePlan {
             labels: Vec::new(),
             ghosts: Vec::new(),
             marquee: None,
+            connector: None,
         }
     }
 }
@@ -193,6 +199,7 @@ pub fn build(input: &PlanInput) -> FramePlan {
         labels,
         ghosts: ghosts::build_ghosts(input, lens),
         marquee: input.marquee,
+        connector: connector::build_connector(input, lens),
     }
 }
 

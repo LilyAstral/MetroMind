@@ -8,7 +8,7 @@ mod search;
 mod station_ops;
 mod undo;
 
-pub use connect::{ConnectRefusal, connect, connect_new_line, disconnect};
+pub use connect::{ConnectRefusal, branch, branch_new_line, connect, connect_new_line, disconnect};
 pub use edit::{Edit, Membership};
 pub use search::search;
 pub use undo::{UndoStack, touch};

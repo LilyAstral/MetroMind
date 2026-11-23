@@ -3,6 +3,7 @@
 
 mod background;
 pub mod colors;
+mod connector;
 pub mod field;
 mod ghosts;
 mod glow;
@@ -131,6 +132,7 @@ pub fn draw_all(
             Layer::Lines => lines::draw_lines(painter, plan, theme),
             Layer::Stations => {
                 ghosts::draw_ghosts(painter, plan, theme);
+                connector::draw_connector(painter, plan, theme);
                 stations::draw_stations(painter, plan, theme);
             }
             Layer::Labels => labels::draw_labels(painter, plan, theme),

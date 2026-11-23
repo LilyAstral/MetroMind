@@ -38,6 +38,7 @@ impl MetroMindApp {
         if std::mem::take(&mut self.fit_pending) {
             self.fit(rect);
         }
+        self.show_picker(&ctx, rect);
         self.apply_queued(rect);
         self.follow_cursor(&ctx, response.hover_pos());
         self.plan = self.build_plan(rect);
@@ -96,6 +97,11 @@ impl MetroMindApp {
                 .interaction
                 .marquee
                 .map(|(a, b)| Rect::from_two_pos(a, b)),
+            connect: self
+                .interaction
+                .connect
+                .as_ref()
+                .map(|c| (c.from, c.pointer)),
         })
     }
 

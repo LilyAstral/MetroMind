@@ -23,6 +23,11 @@ impl MetroMindApp {
             Command::AddToSelection(ids) => self.add_to_selection(ids),
             Command::SelectAll => self.select_all(),
             Command::Marquee(marquee) => self.interaction.marquee = marquee,
+            Command::Connect(connect) => self.interaction.connect = connect,
+            Command::OpenPicker(picker) => self.open_picker(picker),
+            Command::PickerStep(delta) => self.picker_step(delta),
+            Command::PickerPick(index) => self.picker_pick(index),
+            Command::PickerCancel => self.interaction.picker = None,
             Command::Touch(id, kind) => self.touch(id, kind),
             Command::Drag(drag) => self.interaction.drag = drag,
             Command::Pan(delta) => self.settings.camera = self.settings.camera.panned(delta),
@@ -57,14 +62,14 @@ impl MetroMindApp {
         }
     }
 
-    fn touch(&mut self, id: StationId, kind: Touch) {
+    pub(super) fn touch(&mut self, id: StationId, kind: Touch) {
         if let Err(err) = self.doc.touch(id, kind, &self.clock, &self.settings.energy) {
             self.status.problem(err.to_string());
         }
     }
 
     /// Replace the selection with one station, or clear it.
-    fn select_only(&mut self, id: Option<StationId>) {
+    pub(super) fn select_only(&mut self, id: Option<StationId>) {
         self.set_selection(id.into_iter().collect(), id);
     }
 
@@ -140,7 +145,7 @@ impl MetroMindApp {
         self.settings.camera = Camera::fit(lo, hi, to_vec2(viewport.min), size, FIT_MARGIN);
     }
 
-    fn start_rename(&mut self, id: StationId, text: String) {
+    pub(super) fn start_rename(&mut self, id: StationId, text: String) {
         if self.rename.is_some() {
             self.finish_rename(true);
         }
