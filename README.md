@@ -12,6 +12,14 @@ cargo run --release -p metromind-app
 
 You can pass a map file to open it directly: `metromind-app path\to\ideas.metromind`. Without a path, the last map reopens. On first launch you get `My ideas.metromind` in the app data folder, so your first idea is saved without any dialog.
 
+## Install it
+
+```powershell
+.\scripts\install.ps1
+```
+
+This builds a release binary and installs it for the current user (no admin rights needed): `MetroMind.exe` goes to `%LOCALAPPDATA%\Programs\MetroMind`, a Start Menu shortcut is added, and `.metromind` files open in MetroMind when double-clicked. Run it again to update; a running copy is closed first. Options: `-RunTests` (test before installing), `-DesktopShortcut`, `-NoFileAssociation`, `-InstallDir <path>`, and `-Uninstall` (keeps your maps and settings). If scripts are blocked, run `powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1`.
+
 The checks below run at every milestone and all pass:
 
 ```powershell
