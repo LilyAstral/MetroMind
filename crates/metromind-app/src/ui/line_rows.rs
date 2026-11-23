@@ -12,10 +12,14 @@ use std::collections::BTreeMap;
 
 /// Every row button meets this hit target, even when its icon is smaller.
 const TARGET: f32 = 44.0;
-/// Narrowest the name field may get.
-const MIN_NAME_WIDTH: f32 = 60.0;
-/// Six buttons per row, and the gaps between them.
-const ROW_BUTTONS: usize = 6;
+/// Fixed width of the name field. It must not depend on the available width:
+/// panels grow to fit their content, so a width derived from the panel's
+/// width feeds back into itself and the panel runs away across the window.
+const NAME_WIDTH: f32 = 110.0;
+/// Gap between the widgets in a row.
+const ROW_GAP: f32 = 4.0;
+/// Six buttons and the name field, with a gap between each.
+pub const ROW_WIDTH: f32 = 6.0 * TARGET + NAME_WIDTH + 6.0 * ROW_GAP;
 
 /// Text buffers for line names being edited, keyed by line.
 pub type LineNameDrafts = BTreeMap<LineId, String>;
@@ -32,10 +36,10 @@ pub fn show(
     let mut hovered = None;
     for (index, line) in map.ordered_lines().enumerate() {
         let row = ui.horizontal(|ui| {
-            let name_width = name_width(ui.available_width());
+            ui.spacing_mut().item_spacing.x = ROW_GAP;
             colour_controls(ui, map, line.id, edits);
             number_button(ui, index, line.id, locked, commands);
-            name_field(ui, line.id, &line.name, name_width, drafts, edits);
+            name_field(ui, line.id, &line.name, drafts, edits);
             let up = index > 0;
             if order_button(ui, "▲", up, "Move up").clicked() {
                 edits.push(Edit::MoveLine {
@@ -63,11 +67,6 @@ pub fn show(
         }
     }
     commands.push(Command::HoverLine(hovered));
-}
-
-fn name_width(available: f32) -> f32 {
-    let spacing = ROW_BUTTONS as f32 * 4.0;
-    (available - TARGET * ROW_BUTTONS as f32 - spacing).max(MIN_NAME_WIDTH)
 }
 
 /// The swatch opens egui's colour picker; ↺ returns to the palette colour.
@@ -125,15 +124,14 @@ fn name_field(
     ui: &mut Ui,
     id: LineId,
     name: &str,
-    width: f32,
     drafts: &mut LineNameDrafts,
     edits: &mut Vec<Edit>,
 ) {
     let draft = drafts.entry(id).or_insert_with(|| name.to_owned());
     let response = ui.add(
         TextEdit::singleline(draft)
-            .desired_width(width)
-            .min_size(vec2(width, TARGET))
+            .desired_width(NAME_WIDTH)
+            .min_size(vec2(NAME_WIDTH, TARGET))
             .align(Align2::LEFT_CENTER),
     );
     if response.lost_focus() {

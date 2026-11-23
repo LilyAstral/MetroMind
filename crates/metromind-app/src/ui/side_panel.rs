@@ -11,7 +11,12 @@ use metromind_core::editing::Edit;
 use metromind_core::geometry::{RADIUS_RANGE, STRENGTH_RANGE};
 use metromind_core::model::{LineId, MetroMap};
 
-const PANEL_WIDTH: f32 = 360.0;
+/// Room for one line row plus the panel's margins and scroll bar.
+const PANEL_WIDTH: f32 = line_rows::ROW_WIDTH + 32.0;
+/// Hard cap, so no content (or a width remembered from an older version)
+/// can push the panel across the map.
+const MAX_PANEL_WIDTH: f32 = PANEL_WIDTH + 120.0;
+const MIN_PANEL_WIDTH: f32 = 220.0;
 
 /// Draw the panel. Edits go back as the return value; view-only changes
 /// (hover and highlight) go into `commands`.
@@ -27,6 +32,7 @@ pub fn show(
     let mut open = settings.show_side_panel;
     egui::Panel::left("side_panel")
         .default_size(PANEL_WIDTH)
+        .size_range(MIN_PANEL_WIDTH..=MAX_PANEL_WIDTH)
         .show_collapsible(ui, &mut open, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 lines_section(ui, map, locked, drafts, &mut edits, commands);
