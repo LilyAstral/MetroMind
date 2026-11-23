@@ -1,6 +1,6 @@
 use metromind_core::MapError;
 use metromind_core::chrono::{DateTime, Utc};
-use metromind_core::model::{LineId, MetroMap, StationId};
+use metromind_core::model::{LineId, ListStyle, MetroMap, NoteItem, SCHEMA_VERSION, StationId};
 use metromind_core::persistence::{from_json, load, save, temp_path, to_json};
 use metromind_core::sample::sample_map;
 use std::path::PathBuf;
@@ -63,7 +63,7 @@ fn example_file_loads() {
 #[test]
 fn newer_schema_is_rejected_with_friendly_message() {
     let json = to_json(&MetroMap {
-        schema_version: 3,
+        schema_version: 4,
         ..MetroMap::default()
     })
     .expect("serialize");
@@ -71,8 +71,8 @@ fn newer_schema_is_rejected_with_friendly_message() {
     assert!(matches!(
         err,
         MapError::NewerSchema {
-            found: 3,
-            supported: 2
+            found: 4,
+            supported: 3
         }
     ));
     assert!(err.to_string().contains("newer MetroMind"));
@@ -95,7 +95,7 @@ fn inconsistent_file_is_rejected() {
 fn v1_fixture_loads_with_default_colours_and_order() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/example.metromind");
     let map = load(&path).expect("v1 file loads");
-    assert_eq!(map.schema_version, 2);
+    assert_eq!(map.schema_version, SCHEMA_VERSION);
     assert_eq!(map.palette, 0);
     assert!(map.lines.values().all(|l| l.custom_color.is_none()));
     let ascending: Vec<LineId> = map.lines.keys().copied().collect();
@@ -114,4 +114,37 @@ fn v2_round_trip_keeps_order_palette_and_custom_colours() {
     }
     let json = to_json(&map).expect("serialises");
     assert_eq!(from_json(&json).expect("parses"), map);
+}
+
+#[test]
+fn v2_file_loads_with_empty_lists() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/v2.metromind");
+    let map = load(&path).expect("v2 loads");
+    assert_eq!(map.schema_version, SCHEMA_VERSION);
+    let station = &map.stations[&StationId(1)];
+    assert_eq!(station.notes, "Kept from v2");
+    assert!(station.items.is_empty());
+    assert_eq!(station.list_style, ListStyle::Bullets);
+}
+
+#[test]
+fn v3_lists_survive_save_and_load() {
+    let dir = scratch_dir("lists");
+    let path = dir.join("ideas.metromind");
+    let mut map = sample_map(now());
+    let station = map.stations.get_mut(&StationId(1)).expect("station 1");
+    station.items = vec![
+        NoteItem {
+            text: "Draft".into(),
+            done: true,
+        },
+        NoteItem {
+            text: "Test".into(),
+            done: false,
+        },
+    ];
+    station.list_style = ListStyle::Checkboxes;
+    save(&map, &path).expect("save");
+    assert_eq!(load(&path).expect("load"), map);
+    std::fs::remove_dir_all(dir).ok();
 }

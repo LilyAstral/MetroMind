@@ -1,7 +1,7 @@
 //! A hand-made example brainstorm: 3 lines, 20 stations, 2 interchanges and a
 //! few free-floating ideas. Used by tests and the app's "Load sample map".
 
-use crate::model::{Line, LineId, MetroMap, Station, StationId};
+use crate::model::{Line, LineId, ListStyle, MetroMap, Station, StationId};
 use chrono::{DateTime, Duration, Utc};
 use glam::Vec2;
 
@@ -52,6 +52,8 @@ pub fn sample_map(now: DateTime<Utc>) -> MetroMap {
             id,
             title: title.into(),
             notes: String::new(),
+            items: Vec::new(),
+            list_style: ListStyle::default(),
             position: Vec2::new(x, y),
             energy_at_touch: energy,
             last_touched: touched,

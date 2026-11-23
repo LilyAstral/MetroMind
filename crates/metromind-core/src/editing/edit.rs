@@ -2,7 +2,7 @@ use super::line_ops::{create_line, delete_line, move_line, set_line_color, set_p
 use super::station_ops::{add_station, add_to_line, delete_station, remove_from_line};
 use crate::MapError;
 use crate::energy::Touch;
-use crate::model::{Line, LineId, MetroMap, Station, StationId};
+use crate::model::{Line, LineId, ListStyle, MetroMap, NoteItem, Station, StationId};
 use glam::Vec2;
 
 #[cfg(test)]
@@ -39,6 +39,15 @@ pub enum Edit {
     SetNotes {
         id: StationId,
         notes: String,
+    },
+    /// Replace a station's whole list, as `SetNotes` replaces its text.
+    SetNoteItems {
+        id: StationId,
+        items: Vec<NoteItem>,
+    },
+    SetListStyle {
+        id: StationId,
+        style: ListStyle,
     },
     AddToLine {
         line: LineId,
@@ -101,6 +110,14 @@ impl Edit {
                 let old = std::mem::replace(&mut map.station_mut(id)?.notes, notes);
                 Ok(Edit::SetNotes { id, notes: old })
             }
+            Edit::SetNoteItems { id, items } => {
+                let old = std::mem::replace(&mut map.station_mut(id)?.items, items);
+                Ok(Edit::SetNoteItems { id, items: old })
+            }
+            Edit::SetListStyle { id, style } => {
+                let old = std::mem::replace(&mut map.station_mut(id)?.list_style, style);
+                Ok(Edit::SetListStyle { id, style: old })
+            }
             Edit::AddToLine {
                 line,
                 station,
@@ -139,7 +156,10 @@ impl Edit {
 
     fn touch(&self) -> Option<(StationId, Touch)> {
         match self {
-            Edit::Rename { id, .. } | Edit::SetNotes { id, .. } => Some((*id, Touch::Edit)),
+            Edit::Rename { id, .. }
+            | Edit::SetNotes { id, .. }
+            | Edit::SetNoteItems { id, .. }
+            | Edit::SetListStyle { id, .. } => Some((*id, Touch::Edit)),
             Edit::MoveStation { id, .. } => Some((*id, Touch::Drag)),
             Edit::AddToLine { station, .. } => Some((*station, Touch::Connect)),
             Edit::CreateLine { line, .. } => line.stations.first().map(|&s| (s, Touch::Connect)),

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Current file format version. Bump it when the JSON shape changes.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// The whole brainstorm. `BTreeMap`s keep iteration (and saved files) in a
 /// deterministic order, so files diff cleanly and tests are stable.
@@ -98,6 +98,7 @@ impl MetroMap {
 
     /// Bring a map read from an older schema up to the current one. Old files
     /// have no `line_order`, so it starts as ascending IDs (the old behaviour).
+    /// v3 added station lists; their serde defaults (empty, bullets) cover v1/v2.
     pub(crate) fn upgrade(&mut self) {
         if self.schema_version < 2 {
             self.line_order = self.lines.keys().copied().collect();

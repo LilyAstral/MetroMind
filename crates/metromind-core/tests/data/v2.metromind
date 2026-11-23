@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "next_id": 3,
+  "palette": 0,
+  "line_order": [2],
+  "stations": {
+    "1": { "id": 1, "title": "Kept from v2", "notes": "Kept from v2",
+           "position": [0.0, 0.0],
+           "energy_at_touch": 0.5,
+           "last_touched": "2026-11-23T10:40:00Z",
+           "created": "2026-11-20T08:00:00Z" },
+    "2": { "id": 2, "title": "Second", "notes": "",
+           "position": [160.0, 0.0],
+           "energy_at_touch": 0.5,
+           "last_touched": "2026-11-23T10:40:00Z",
+           "created": "2026-11-20T08:00:00Z" }
+  },
+  "lines": {
+    "2": { "id": 2, "name": "Main", "color_index": 0,
+           "stations": [1, 2] }
+  }
+}

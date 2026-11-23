@@ -251,3 +251,40 @@ fn failed_edit_leaves_map_untouched() {
     assert!(edit.apply(&mut map).is_err());
     assert_eq!(map, original);
 }
+
+#[test]
+fn list_edits_round_trip() {
+    let map = sample();
+    let id = *map.stations.keys().next().expect("stations");
+    assert_round_trip(Edit::SetNoteItems {
+        id,
+        items: vec![NoteItem {
+            text: "Step".into(),
+            done: true,
+        }],
+    });
+    assert_round_trip(Edit::SetListStyle {
+        id,
+        style: ListStyle::Checkboxes,
+    });
+}
+
+#[test]
+fn deleting_a_station_and_undoing_restores_its_list() {
+    let mut map = sample();
+    let id = *map.stations.keys().next().expect("stations");
+    let items = vec![NoteItem {
+        text: "Keep me".into(),
+        done: false,
+    }];
+    Edit::SetNoteItems {
+        id,
+        items: items.clone(),
+    }
+    .apply(&mut map)
+    .expect("set items");
+    let inverse = Edit::DeleteStation { id }.apply(&mut map).expect("delete");
+    assert!(!map.stations.contains_key(&id));
+    inverse.apply(&mut map).expect("undo delete");
+    assert_eq!(map.stations[&id].items, items);
+}

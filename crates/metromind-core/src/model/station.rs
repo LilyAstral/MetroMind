@@ -7,12 +7,33 @@ use serde::{Deserialize, Serialize};
 /// Shown for an idea captured without a name yet.
 pub const UNTITLED: &str = "untitled idea";
 
+/// One line in a station's list. `done` is kept even when the list is shown
+/// as bullets, so switching styles doesn't lose ticks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NoteItem {
+    pub text: String,
+    pub done: bool,
+}
+
+/// How a station's list is drawn.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ListStyle {
+    #[default]
+    Bullets,
+    Checkboxes,
+}
+
 /// One idea on the map.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Station {
     pub id: StationId,
     pub title: String,
     pub notes: String,
+    /// A checklist-style list shown below the free-form notes.
+    #[serde(default)]
+    pub items: Vec<NoteItem>,
+    #[serde(default)]
+    pub list_style: ListStyle,
     /// World space, snapped to the grid.
     pub position: Vec2,
     /// Energy (0..=1) at the moment of the last touch; see [`decayed`].
@@ -34,6 +55,8 @@ impl Station {
             id,
             title: title.into(),
             notes: String::new(),
+            items: Vec::new(),
+            list_style: ListStyle::default(),
             position,
             energy_at_touch: settings.new_station,
             last_touched: now,
