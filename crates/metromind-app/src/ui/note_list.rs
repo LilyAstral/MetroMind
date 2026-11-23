@@ -7,7 +7,7 @@ use super::note_draft::{ListDraft, RowAction};
 use crate::render::colors::Theme;
 use eframe::egui::text::CCursor;
 use eframe::egui::text_selection::CCursorRange;
-use eframe::egui::{self, Button, Id, Key, Modifiers, TextEdit, Ui, vec2};
+use eframe::egui::{self, Align2, Button, Id, Key, Modifiers, TextEdit, Ui, vec2};
 use metromind_core::editing::Edit;
 use metromind_core::model::{ListStyle, NoteItem, StationId};
 
@@ -48,12 +48,13 @@ pub fn show(
 /// asked for this frame, if any.
 fn rows(ui: &mut Ui, base: Id, draft: &mut ListDraft, style: ListStyle) -> Option<RowAction> {
     let len = draft.items.len();
+    let reveal = draft.reveal.take();
     let mut action = None;
     for (index, item) in draft.items.iter_mut().enumerate() {
         let row_id = base.with(index);
         let has_focus = ui.memory(|m| m.has_focus(row_id));
         let keys = key_action(ui, has_focus, index, len, item);
-        let row = item_row(ui, row_id, index, item, style);
+        let row = item_row(ui, row_id, index, item, style, reveal == Some(index));
         action = action.or(keys).or(row);
     }
     let add = Button::new("+ Add item").min_size(vec2(TEXT_WIDTH, TARGET));
@@ -158,17 +159,22 @@ fn item_row(
     index: usize,
     item: &mut NoteItem,
     style: ListStyle,
+    reveal: bool,
 ) -> Option<RowAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         action = marker(ui, index, item.done, style);
         let mut text = TextEdit::singleline(&mut item.text)
             .id(row_id)
-            .desired_width(TEXT_WIDTH);
+            .desired_width(TEXT_WIDTH)
+            .align(Align2::LEFT_CENTER);
         if style == ListStyle::Checkboxes && item.done {
             text = text.text_color(Theme::default().text_dim);
         }
-        ui.add(text);
+        let response = ui.add(text);
+        if reveal {
+            response.scroll_to_me(None);
+        }
         let remove = Button::new("✕").min_size(vec2(TARGET, TARGET));
         if ui.add(remove).on_hover_text("Remove this item").clicked() {
             action = Some(RowAction::Delete(index));
@@ -211,5 +217,6 @@ fn request_focus(ui: &Ui, base: Id, draft: &mut ListDraft) -> bool {
         .set_char_range(Some(CCursorRange::one(CCursor::new(end))));
     TextEdit::store_state(ui.ctx(), id, state);
     ui.memory_mut(|m| m.request_focus(id));
+    draft.reveal = Some(index);
     true
 }

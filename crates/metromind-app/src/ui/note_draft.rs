@@ -12,6 +12,8 @@ pub struct ListDraft {
     pub(super) focused: bool,
     /// Row to focus next frame, with the cursor at the end of its text.
     pub(super) focus: Option<usize>,
+    /// Row just given focus, to scroll into view once it has been drawn.
+    pub(super) reveal: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

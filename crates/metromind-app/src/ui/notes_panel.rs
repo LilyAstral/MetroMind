@@ -81,10 +81,14 @@ pub fn show(ui: &mut Ui, state: &mut NotesState, map: &MetroMap) -> NotesOutcome
                     out.close = true;
                 }
             });
-            text_fields(ui, state, map, &mut out);
-            list_field(ui, state, map, &mut out);
-            lines_on(ui, state.station, map);
-            actions(ui, state.station, &mut out);
+            // Scrolls so a long list never pushes its newest item (and the
+            // text cursor in it) below the bottom of the window.
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                text_fields(ui, state, map, &mut out);
+                list_field(ui, state, map, &mut out);
+                lines_on(ui, state.station, map);
+                actions(ui, state.station, &mut out);
+            });
         });
     out
 }

@@ -15,8 +15,10 @@ const BODY_ALPHA: f32 = 0.7;
 const SHEEN_ALPHA: f32 = 0.08;
 /// The sheen covers this much of the panel's height, from the top.
 const SHEEN_HEIGHT: f32 = 1.0 / 3.0;
-/// Keeps the sheen inside the rounded corners.
-const SHEEN_INSET: f32 = 6.0;
+/// Keeps the sheen just inside the 1 px edge stroke.
+const SHEEN_INSET: f32 = 1.0;
+/// Segments per rounded corner of the sheen.
+const CORNER_STEPS: usize = 8;
 const EDGE_ALPHA: f32 = 0.14;
 const EDGE_TOP_ALPHA: f32 = 0.26;
 
@@ -71,33 +73,52 @@ pub fn shapes(rect: Rect, background: Color32, opacity: f32) -> Vec<Shape> {
 }
 
 /// A vertical gradient over the top third: sheen at the top, nothing below.
-/// Built like `radial_glow`, from vertex colours.
+/// Its outline follows the body's rounded top corners (inset by the edge
+/// stroke), so no square corner pokes out past the curve. Built like
+/// `radial_glow`: a triangle fan whose vertex colours depend only on height,
+/// so the interpolated gradient is exactly linear.
 fn sheen(rect: Rect, opacity: f32) -> Mesh {
-    let band = Rect::from_min_max(
-        Pos2::new(rect.min.x + SHEEN_INSET, rect.min.y),
-        Pos2::new(
-            rect.max.x - SHEEN_INSET,
-            rect.min.y + rect.height() * SHEEN_HEIGHT,
-        ),
-    );
+    let outline = sheen_outline(rect);
+    let top = rect.min.y + SHEEN_INSET;
+    let height = rect.height() * SHEEN_HEIGHT;
     let bright = sheen_color().gamma_multiply(opacity);
-    let clear = Color32::TRANSPARENT;
+    let color_at = |y: f32| bright.gamma_multiply(1.0 - ((y - top) / height).clamp(0.0, 1.0));
+    let center = outline.iter().fold(Pos2::ZERO, |sum, p| sum + p.to_vec2()) / outline.len() as f32;
     let mut mesh = Mesh::default();
-    for (pos, color) in [
-        (band.left_top(), bright),
-        (band.right_top(), bright),
-        (band.right_bottom(), clear),
-        (band.left_bottom(), clear),
-    ] {
+    for pos in std::iter::once(center).chain(outline) {
         mesh.vertices.push(Vertex {
             pos,
             uv: Pos2::ZERO,
-            color,
+            color: color_at(pos.y),
         });
     }
-    mesh.add_triangle(0, 1, 2);
-    mesh.add_triangle(0, 2, 3);
+    let rim = mesh.vertices.len() as u32 - 1;
+    for i in 1..rim {
+        mesh.add_triangle(0, i, i + 1);
+    }
+    // Close the fan across the bottom edge.
+    mesh.add_triangle(0, rim, 1);
     mesh
+}
+
+/// The sheen's convex outline: down the left side, around the top-left
+/// corner, across, around the top-right corner, and back down.
+fn sheen_outline(rect: Rect) -> Vec<Pos2> {
+    let inner = rect.shrink(SHEEN_INSET);
+    let r = (f32::from(RADIUS) - SHEEN_INSET).max(0.0);
+    let bottom = rect.min.y + rect.height() * SHEEN_HEIGHT;
+    let arc = |cx: f32, from: f32| {
+        (0..=CORNER_STEPS).map(move |i| {
+            let a = from + std::f32::consts::FRAC_PI_2 * i as f32 / CORNER_STEPS as f32;
+            Pos2::new(cx + r * a.cos(), inner.min.y + r + r * a.sin())
+        })
+    };
+    let pi = std::f32::consts::PI;
+    std::iter::once(Pos2::new(inner.min.x, bottom))
+        .chain(arc(inner.min.x + r, pi))
+        .chain(arc(inner.max.x - r, 1.5 * pi))
+        .chain(std::iter::once(Pos2::new(inner.max.x, bottom)))
+        .collect()
 }
 
 #[cfg(test)]
@@ -114,6 +135,28 @@ mod tests {
     fn transparent_top_shows_bottom() {
         let bottom = Color32::from_rgb(30, 40, 50);
         assert_eq!(blend(Color32::TRANSPARENT, bottom), bottom);
+    }
+
+    /// The sheen must stay inside the body's rounded corners, or its square
+    /// corners show as brighter patches outside the curve.
+    #[test]
+    fn sheen_stays_inside_rounded_corners() {
+        let rect = Rect::from_min_size(Pos2::new(10.0, 20.0), vec2(280.0, 120.0));
+        let r = f32::from(RADIUS);
+        let corners = [
+            Pos2::new(rect.min.x + r, rect.min.y + r),
+            Pos2::new(rect.max.x - r, rect.min.y + r),
+        ];
+        for p in sheen_outline(rect) {
+            assert!(rect.contains(p), "{p:?} outside the panel");
+            for c in corners {
+                let in_corner_box = (p.x < rect.min.x + r || p.x > rect.max.x - r) && p.y < c.y;
+                let near = (p.x - c.x).abs() <= r;
+                if in_corner_box && near {
+                    assert!(p.distance(c) <= r + 1e-3, "{p:?} pokes past the corner");
+                }
+            }
+        }
     }
 
     #[test]
