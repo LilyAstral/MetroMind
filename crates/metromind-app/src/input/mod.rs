@@ -6,47 +6,73 @@ mod keys;
 mod pointer;
 
 use crate::frame_plan::FramePlan;
-use eframe::egui::{Context, Response};
+use eframe::egui::{Context, Pos2, Response};
 use metromind_core::Vec2;
 use metromind_core::chrono::{DateTime, Utc};
 use metromind_core::editing::Edit;
 use metromind_core::energy::{EnergySettings, Touch};
 use metromind_core::model::{MetroMap, StationId};
+use std::collections::BTreeSet;
 
 /// View state that input needs to interpret gestures.
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 pub struct Interaction {
-    pub selected: Option<StationId>,
+    /// Every selected station.
+    pub selection: BTreeSet<StationId>,
+    /// The station clicked most recently. Always in `selection` when set.
+    pub primary: Option<StationId>,
     pub hovered: Option<StationId>,
     pub drag: Option<StationDrag>,
+    /// A Shift+drag selection box: where it started and where the pointer is.
+    pub marquee: Option<(Pos2, Pos2)>,
     /// A text box (rename, notes, line name) owns the keyboard.
     pub typing: bool,
 }
 
-/// A station being dragged. The model only changes on release.
-#[derive(Debug, Clone, Copy, PartialEq)]
+impl Interaction {
+    pub fn is_selected(&self, id: StationId) -> bool {
+        self.selection.contains(&id)
+    }
+}
+
+/// Stations being dragged together. The model only changes on release.
+#[derive(Debug, Clone, PartialEq)]
 pub struct StationDrag {
-    pub id: StationId,
-    /// Station position minus the grab point, in world units.
-    pub offset: Vec2,
-    /// Current unsnapped world position.
-    pub world: Vec2,
-    pub start: Vec2,
+    /// Each moving station with the position it had when the drag began.
+    pub moving: Vec<(StationId, Vec2)>,
+    /// World position under the pointer when the drag began.
+    pub grab: Vec2,
+    /// Pointer movement since the drag began, in world units, not snapped.
+    pub delta: Vec2,
 }
 
 /// View-level changes. Applied by the app after this frame's edits.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
+    /// Replace the selection with this one station (`None` clears it).
     Select(Option<StationId>),
+    /// Shift+click: add the station to the selection, or remove it.
+    Toggle(StationId),
+    /// Box select: add these stations to the selection.
+    AddToSelection(Vec<StationId>),
+    SelectAll,
+    /// Show the Shift+drag selection box, or hide it with `None`.
+    Marquee(Option<(Pos2, Pos2)>),
     Touch(StationId, Touch),
     Drag(Option<StationDrag>),
     Pan(Vec2),
-    Zoom { anchor: Vec2, factor: f32 },
+    Zoom {
+        anchor: Vec2,
+        factor: f32,
+    },
     AdjustLensStrength(f32),
     AdjustLensRadius(f32),
     ToggleLens,
     FitMap,
-    StartRename { id: StationId, text: String },
+    StartRename {
+        id: StationId,
+        text: String,
+    },
     OpenNotes(StationId),
     Undo,
     Redo,

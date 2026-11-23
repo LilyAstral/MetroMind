@@ -45,8 +45,10 @@ fn draw_interchange(painter: &Painter, s: &ScreenStation, line_width: f32, theme
 
 /// "Where am I" at a glance: a clear ring around the selection, a soft one on hover.
 fn draw_focus_ring(painter: &Painter, s: &ScreenStation, outer: Rect, theme: &Theme) {
-    let color = if s.selected {
+    let color = if s.primary {
         theme.selection
+    } else if s.selected {
+        theme.selection.gamma_multiply(0.55)
     } else if s.hovered {
         theme.hover
     } else {

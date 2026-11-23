@@ -26,7 +26,7 @@ impl MetroMindApp {
             &InputContext {
                 plan: &self.plan,
                 map: &self.doc.map,
-                interaction: self.interaction,
+                interaction: self.interaction.clone(),
                 now,
                 energy: &self.settings.energy,
             },
@@ -80,7 +80,6 @@ impl MetroMindApp {
     }
 
     fn build_plan(&self, viewport: Rect) -> FramePlan {
-        let drag = self.interaction.drag.map(|d| (d.id, d.world));
         frame_plan::build(&PlanInput {
             map: &self.doc.map,
             camera: self.settings.camera,
@@ -89,9 +88,14 @@ impl MetroMindApp {
             now: self.clock.now(),
             energy: &self.settings.energy,
             viewport,
-            selected: self.interaction.selected,
+            selection: &self.interaction.selection,
+            primary: self.interaction.primary,
             hovered: self.interaction.hovered,
-            drag,
+            drag: self.interaction.drag.as_ref(),
+            marquee: self
+                .interaction
+                .marquee
+                .map(|(a, b)| Rect::from_two_pos(a, b)),
         })
     }
 
@@ -103,7 +107,7 @@ impl MetroMindApp {
                 camera: self.plan.camera,
                 lens: self.plan.lens,
                 viewport: rect,
-                drag: self.interaction.drag.map(|d| d.world),
+                drag: self.interaction.drag.as_ref().map(|d| d.delta),
             };
             self.field.texture_for(ui.ctx(), &self.plan, key)
         });

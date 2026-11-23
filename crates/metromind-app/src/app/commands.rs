@@ -10,6 +10,7 @@ use metromind_core::editing::Edit;
 use metromind_core::energy::Touch;
 use metromind_core::geometry::Camera;
 use metromind_core::model::StationId;
+use std::collections::BTreeSet;
 
 /// Empty space kept around the map by "Fit whole map".
 const FIT_MARGIN: f32 = 80.0;
@@ -17,7 +18,11 @@ const FIT_MARGIN: f32 = 80.0;
 impl MetroMindApp {
     pub(super) fn run_command(&mut self, command: Command, viewport: Rect) {
         match command {
-            Command::Select(id) => self.select(id),
+            Command::Select(id) => self.select_only(id),
+            Command::Toggle(id) => self.toggle(id),
+            Command::AddToSelection(ids) => self.add_to_selection(ids),
+            Command::SelectAll => self.select_all(),
+            Command::Marquee(marquee) => self.interaction.marquee = marquee,
             Command::Touch(id, kind) => self.touch(id, kind),
             Command::Drag(drag) => self.interaction.drag = drag,
             Command::Pan(delta) => self.settings.camera = self.settings.camera.panned(delta),
@@ -58,22 +63,62 @@ impl MetroMindApp {
         }
     }
 
-    /// Selecting counts as a little attention. The notes pane follows the selection.
-    pub(super) fn select(&mut self, id: Option<StationId>) {
-        if self.interaction.selected == id {
+    /// Replace the selection with one station, or clear it.
+    fn select_only(&mut self, id: Option<StationId>) {
+        self.set_selection(id.into_iter().collect(), id);
+    }
+
+    /// Shift+click: add the station to the selection, or remove it.
+    fn toggle(&mut self, id: StationId) {
+        let mut selection = self.interaction.selection.clone();
+        let primary = if selection.remove(&id) {
+            match self.interaction.primary {
+                Some(p) if p != id => Some(p),
+                _ => selection.last().copied(),
+            }
+        } else {
+            selection.insert(id);
+            Some(id)
+        };
+        self.set_selection(selection, primary);
+    }
+
+    fn add_to_selection(&mut self, ids: Vec<StationId>) {
+        if ids.is_empty() {
             return;
         }
-        if self.rename.as_ref().is_some_and(|r| Some(r.id) != id) {
+        let mut selection = self.interaction.selection.clone();
+        selection.extend(ids.iter().copied());
+        self.set_selection(selection, ids.last().copied());
+    }
+
+    fn select_all(&mut self) {
+        let selection: BTreeSet<StationId> = self.doc.map.stations.keys().copied().collect();
+        let primary = self
+            .interaction
+            .primary
+            .filter(|p| selection.contains(p))
+            .or_else(|| selection.first().copied());
+        self.set_selection(selection, primary);
+    }
+
+    /// Selecting counts as a little attention for a newly focused station.
+    /// The notes pane follows the primary station.
+    fn set_selection(&mut self, selection: BTreeSet<StationId>, primary: Option<StationId>) {
+        if self.rename.as_ref().is_some_and(|r| Some(r.id) != primary) {
             self.finish_rename(true);
         }
-        self.interaction.selected = id;
-        match id {
-            Some(id) => {
+        let changed = primary != self.interaction.primary;
+        self.interaction.selection = selection;
+        self.interaction.primary = primary;
+        match primary {
+            Some(id) if changed => {
                 self.touch(id, Touch::Select);
                 if self.notes.is_some() {
                     self.open_notes(id);
                 }
             }
+            Some(_) => {}
             None => self.close_notes(),
         }
     }
@@ -166,16 +211,24 @@ impl MetroMindApp {
     /// Undo or delete can remove the selected station; drop stale references.
     pub(super) fn forget_missing_selection(&mut self) {
         let exists = |id: &StationId| self.doc.map.stations.contains_key(id);
-        if self.interaction.selected.is_some_and(|id| !exists(&id)) {
-            self.interaction.selected = None;
-        }
+        self.interaction.selection.retain(exists);
+        let primary = self
+            .interaction
+            .primary
+            .filter(|p| self.interaction.is_selected(*p));
+        self.interaction.primary = primary.or_else(|| self.interaction.selection.first().copied());
         if self.notes.as_ref().is_some_and(|n| !exists(&n.station)) {
             self.notes = None;
         }
         if self.rename.as_ref().is_some_and(|r| !exists(&r.id)) {
             self.rename = None;
         }
-        if self.interaction.drag.is_some_and(|d| !exists(&d.id)) {
+        if self
+            .interaction
+            .drag
+            .as_ref()
+            .is_some_and(|d| d.moving.iter().any(|(id, _)| !exists(id)))
+        {
             self.interaction.drag = None;
         }
     }

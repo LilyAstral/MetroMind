@@ -1,18 +1,21 @@
 //! map + camera + lens + clock → [`FramePlan`]: everything a frame draws, in
 //! screen space, computed once. Layers and hit testing only read it.
 
+mod ghosts;
 mod grid;
 mod lines;
 mod stations;
 #[cfg(test)]
 mod tests;
 
+use crate::input::StationDrag;
 use eframe::egui::{Pos2, Rect, pos2};
 use metromind_core::Vec2;
 use metromind_core::chrono::{DateTime, Utc};
 use metromind_core::energy::EnergySettings;
 use metromind_core::geometry::{Camera, FisheyeLens, distance_to_polyline};
 use metromind_core::model::{LineId, MetroMap, Station, StationId};
+use std::collections::BTreeSet;
 
 pub const STATION_RADIUS: f32 = 7.0;
 /// Hit radius at magnification 1; 22 px radius = a 44 px target.
@@ -41,10 +44,12 @@ pub struct PlanInput<'a> {
     pub now: DateTime<Utc>,
     pub energy: &'a EnergySettings,
     pub viewport: Rect,
-    pub selected: Option<StationId>,
+    pub selection: &'a BTreeSet<StationId>,
+    pub primary: Option<StationId>,
     pub hovered: Option<StationId>,
-    /// A station being dragged and its current (unsnapped) world position.
-    pub drag: Option<(StationId, Vec2)>,
+    /// Stations being dragged, with the unsnapped pointer movement.
+    pub drag: Option<&'a StationDrag>,
+    pub marquee: Option<Rect>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -59,7 +64,10 @@ pub struct ScreenStation {
     pub line_count: usize,
     /// Color of the first line through the station, if any.
     pub color_index: Option<u8>,
+    /// In the selection (drawn with a ring).
     pub selected: bool,
+    /// The primary station of the selection.
+    pub primary: bool,
     pub hovered: bool,
 }
 
@@ -99,6 +107,9 @@ pub struct FramePlan {
     pub stations: Vec<ScreenStation>,
     pub lines: Vec<ScreenLine>,
     pub labels: Vec<ScreenLabel>,
+    /// Where stations being dragged will land (snapped, through the lens).
+    pub ghosts: Vec<Vec2>,
+    pub marquee: Option<Rect>,
 }
 
 impl Default for FramePlan {
@@ -113,6 +124,8 @@ impl Default for FramePlan {
             stations: Vec::new(),
             lines: Vec::new(),
             labels: Vec::new(),
+            ghosts: Vec::new(),
+            marquee: None,
         }
     }
 }
@@ -137,6 +150,15 @@ impl FramePlan {
             .filter(|(_, d)| *d <= SEGMENT_HIT_PX)
             .min_by(|a, b| a.1.total_cmp(&b.1))
             .map(|(l, _)| l)
+    }
+
+    /// Stations whose on-screen position is inside `rect`, for box select.
+    pub fn stations_in(&self, rect: Rect) -> Vec<StationId> {
+        self.stations
+            .iter()
+            .filter(|s| rect.contains(to_pos2(s.pos)))
+            .map(|s| s.id)
+            .collect()
     }
 
     pub fn station(&self, id: StationId) -> Option<&ScreenStation> {
@@ -169,12 +191,17 @@ pub fn build(input: &PlanInput) -> FramePlan {
         lines: lines::build_lines(input, lens, line_width),
         stations,
         labels,
+        ghosts: ghosts::build_ghosts(input, lens),
+        marquee: input.marquee,
     }
 }
 
-fn world_position(input: &PlanInput, station: &Station) -> Vec2 {
+/// Where a station is drawn in world space: where it is, or where the drag has moved it.
+pub fn world_position(input: &PlanInput, station: &Station) -> Vec2 {
     match input.drag {
-        Some((id, world)) if id == station.id => world,
+        Some(drag) if drag.moving.iter().any(|(id, _)| *id == station.id) => {
+            station.position + drag.delta
+        }
         _ => station.position,
     }
 }

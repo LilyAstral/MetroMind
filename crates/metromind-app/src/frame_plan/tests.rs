@@ -2,8 +2,10 @@
 
 use super::*;
 use metromind_core::sample::sample_map;
+use std::collections::BTreeSet;
 
 fn plan_for(map: &MetroMap, lens_enabled: bool, selected: Option<StationId>) -> FramePlan {
+    let selection: BTreeSet<StationId> = selected.into_iter().collect();
     let now = DateTime::UNIX_EPOCH;
     let viewport = Rect::from_min_max(pos2(0.0, 0.0), pos2(1200.0, 800.0));
     let camera = Camera {
@@ -21,7 +23,9 @@ fn plan_for(map: &MetroMap, lens_enabled: bool, selected: Option<StationId>) -> 
         now,
         energy: &EnergySettings::default(),
         viewport,
-        selected,
+        selection: &selection,
+        primary: selected,
+        marquee: None,
         hovered: None,
         drag: None,
     })
@@ -137,7 +141,9 @@ fn bench_500_stations() {
             now,
             energy: &energy,
             viewport,
-            selected: None,
+            selection: &BTreeSet::new(),
+            primary: None,
+            marquee: None,
             hovered: None,
             drag: None,
         };

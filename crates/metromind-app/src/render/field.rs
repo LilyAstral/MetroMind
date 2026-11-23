@@ -118,6 +118,7 @@ mod tests {
             line_count: 0,
             color_index: None,
             selected: false,
+            primary: false,
             hovered: false,
         };
         let plan = FramePlan {

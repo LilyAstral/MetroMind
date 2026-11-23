@@ -4,12 +4,14 @@
 mod background;
 pub mod colors;
 pub mod field;
+mod ghosts;
 mod glow;
 mod grid;
 mod halos;
 mod labels;
 mod lens_ring;
 mod lines;
+mod marquee;
 mod stations;
 
 pub use background::grain_image;
@@ -127,9 +129,13 @@ pub fn draw_all(
             }
             Layer::Halos => halos::draw_halos(painter, plan, theme),
             Layer::Lines => lines::draw_lines(painter, plan, theme),
-            Layer::Stations => stations::draw_stations(painter, plan, theme),
+            Layer::Stations => {
+                ghosts::draw_ghosts(painter, plan, theme);
+                stations::draw_stations(painter, plan, theme);
+            }
             Layer::Labels => labels::draw_labels(painter, plan, theme),
             Layer::LensRing => lens_ring::draw_lens_ring(painter, plan, theme),
         }
     }
+    marquee::draw_marquee(painter, plan, theme);
 }

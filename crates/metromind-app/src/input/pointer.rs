@@ -1,6 +1,6 @@
 use super::{Command, InputContext, InputOutcome, StationDrag};
 use crate::frame_plan::to_vec2;
-use eframe::egui::{Context, Event, MouseWheelUnit, PointerButton, Pos2, Response};
+use eframe::egui::{Context, Event, MouseWheelUnit, PointerButton, Pos2, Rect, Response};
 use metromind_core::Vec2;
 use metromind_core::editing::{Edit, Membership};
 use metromind_core::geometry::{GRID_CELL, snap_to_grid};
@@ -17,21 +17,32 @@ const LENS_RADIUS_PER_NOTCH: f32 = 20.0;
 pub fn collect(ctx: &Context, response: &Response, cx: &InputContext, out: &mut InputOutcome) {
     let pointer = response.hover_pos();
     out.hovered = pointer.and_then(|p| cx.plan.station_at(p));
-    clicks(response, cx, out);
+    clicks(ctx, response, cx, out);
     drags(ctx, response, cx, out);
     if response.contains_pointer() {
         wheel(ctx, pointer, out);
     }
 }
 
-fn clicks(response: &Response, cx: &InputContext, out: &mut InputOutcome) {
+fn clicks(ctx: &Context, response: &Response, cx: &InputContext, out: &mut InputOutcome) {
     let Some(p) = response.interact_pointer_pos() else {
         return;
     };
     if response.double_clicked() {
         double_click(p, cx, out);
     } else if response.clicked() {
-        out.commands.push(Command::Select(cx.plan.station_at(p)));
+        let shift = ctx.input(|i| i.modifiers.shift);
+        out.commands
+            .push(click_command(cx.plan.station_at(p), shift));
+    }
+}
+
+/// Plain click selects only what was clicked (or clears on empty space).
+/// Shift+click on a station adds it to, or removes it from, the selection.
+fn click_command(hit: Option<StationId>, shift: bool) -> Command {
+    match hit {
+        Some(id) if shift => Command::Toggle(id),
+        _ => Command::Select(hit),
     }
 }
 
@@ -71,20 +82,18 @@ fn double_click(p: Pos2, cx: &InputContext, out: &mut InputOutcome) {
     });
 }
 
-/// Left-drag a station to move it (one edit on release, snapped to the
-/// grid). Any other drag pans the view.
+/// Left-drag: move stations, or draw a box with Shift. Any other drag pans.
 fn drags(ctx: &Context, response: &Response, cx: &InputContext, out: &mut InputOutcome) {
-    if let Some(drag) = cx.interaction.drag {
+    if let Some(drag) = &cx.interaction.drag {
         continue_drag(drag, response, cx, out);
         return;
     }
-    if response.drag_started_by(PointerButton::Primary) {
-        let origin = ctx.input(|i| i.pointer.press_origin());
-        if let Some(drag) = origin.and_then(|o| start_drag(o, cx)) {
-            out.commands.push(Command::Select(Some(drag.id)));
-            out.commands.push(Command::Drag(Some(drag)));
-            return;
-        }
+    if let Some((from, _)) = cx.interaction.marquee {
+        continue_marquee(from, response, cx, out);
+        return;
+    }
+    if response.drag_started_by(PointerButton::Primary) && begin_drag(ctx, response, cx, out) {
+        return;
     }
     if response.dragged() {
         let delta = response.drag_delta();
@@ -92,38 +101,95 @@ fn drags(ctx: &Context, response: &Response, cx: &InputContext, out: &mut InputO
     }
 }
 
-fn start_drag(origin: Pos2, cx: &InputContext) -> Option<StationDrag> {
-    let id = cx.plan.station_at(origin)?;
-    let position = cx.map.stations.get(&id)?.position;
-    let grabbed = cx.plan.camera.view_to_world(to_vec2(origin));
-    Some(StationDrag {
-        id,
-        offset: position - grabbed,
-        world: position,
-        start: position,
-    })
+/// Start a station drag or a box select at `origin`. Returns `false` when the
+/// drag should pan instead.
+fn begin_drag(
+    ctx: &Context,
+    response: &Response,
+    cx: &InputContext,
+    out: &mut InputOutcome,
+) -> bool {
+    let Some(origin) = ctx.input(|i| i.pointer.press_origin()) else {
+        return false;
+    };
+    if let Some(hit) = cx.plan.station_at(origin) {
+        begin_station_drag(hit, origin, cx, out);
+        return true;
+    }
+    let shift = ctx.input(|i| i.modifiers.shift);
+    if shift {
+        let here = response.interact_pointer_pos().unwrap_or(origin);
+        out.commands.push(Command::Marquee(Some((origin, here))));
+    }
+    shift
+}
+
+/// Dragging a selected station moves the whole selection. Dragging any other
+/// station selects only it first.
+fn begin_station_drag(hit: StationId, origin: Pos2, cx: &InputContext, out: &mut InputOutcome) {
+    let ids: Vec<StationId> = if cx.interaction.is_selected(hit) {
+        cx.interaction.selection.iter().copied().collect()
+    } else {
+        out.commands.push(Command::Select(Some(hit)));
+        vec![hit]
+    };
+    let moving = ids
+        .into_iter()
+        .filter_map(|id| cx.map.stations.get(&id).map(|s| (id, s.position)))
+        .collect();
+    let grab = cx.plan.camera.view_to_world(to_vec2(origin));
+    let drag = StationDrag {
+        moving,
+        grab,
+        delta: Vec2::ZERO,
+    };
+    out.commands.push(Command::Drag(Some(drag)));
 }
 
 fn continue_drag(
-    drag: StationDrag,
+    drag: &StationDrag,
     response: &Response,
     cx: &InputContext,
     out: &mut InputOutcome,
 ) {
-    let pointer = response.interact_pointer_pos();
-    match pointer {
+    match response.interact_pointer_pos() {
         Some(p) if response.dragged() && !response.drag_stopped() => {
-            let world = cx.plan.camera.view_to_world(to_vec2(p)) + drag.offset;
-            out.commands
-                .push(Command::Drag(Some(StationDrag { world, ..drag })));
+            let delta = cx.plan.camera.view_to_world(to_vec2(p)) - drag.grab;
+            out.commands.push(Command::Drag(Some(StationDrag {
+                delta,
+                ..drag.clone()
+            })));
         }
         _ => {
-            let to = snap_to_grid(drag.world, GRID_CELL);
-            if to != drag.start {
-                out.edits.push(Edit::MoveStation { id: drag.id, to });
-            }
+            out.edits.extend(drop_edit(drag));
             out.commands.push(Command::Drag(None));
         }
+    }
+}
+
+/// On release each station snaps to the grid on its own. All the moves form
+/// one batch, so a single undo puts them back.
+fn drop_edit(drag: &StationDrag) -> Option<Edit> {
+    let moves: Vec<Edit> = drag
+        .moving
+        .iter()
+        .filter_map(|&(id, start)| {
+            let to = snap_to_grid(start + drag.delta, GRID_CELL);
+            (to != start).then_some(Edit::MoveStation { id, to })
+        })
+        .collect();
+    (!moves.is_empty()).then_some(Edit::Batch(moves))
+}
+
+fn continue_marquee(from: Pos2, response: &Response, cx: &InputContext, out: &mut InputOutcome) {
+    if response.drag_stopped() {
+        let to = cx.interaction.marquee.map_or(from, |m| m.1);
+        let rect = Rect::from_two_pos(from, to);
+        out.commands
+            .push(Command::AddToSelection(cx.plan.stations_in(rect)));
+        out.commands.push(Command::Marquee(None));
+    } else if let Some(p) = response.interact_pointer_pos() {
+        out.commands.push(Command::Marquee(Some((from, p))));
     }
 }
 

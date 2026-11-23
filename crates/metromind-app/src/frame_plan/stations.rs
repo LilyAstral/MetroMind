@@ -34,7 +34,8 @@ pub(super) fn build_stations(input: &PlanInput, lens: FisheyeLens) -> Vec<Screen
                 is_interchange: line_count >= 2,
                 line_count,
                 color_index: colors.get(&station.id).copied(),
-                selected: input.selected == Some(station.id),
+                selected: input.selection.contains(&station.id),
+                primary: input.primary == Some(station.id),
                 hovered: input.hovered == Some(station.id),
             }
         })
