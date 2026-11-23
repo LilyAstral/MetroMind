@@ -5,7 +5,7 @@ use eframe::egui::{Context, Event, MouseWheelUnit, PointerButton, Pos2, Rect, Re
 use metromind_core::Vec2;
 use metromind_core::editing::{Edit, Membership};
 use metromind_core::geometry::{GRID_CELL, snap_to_grid};
-use metromind_core::model::{Station, StationId};
+use metromind_core::model::StationId;
 
 /// Zoom factor per wheel notch.
 const WHEEL_ZOOM_BASE: f32 = 1.12;
@@ -60,27 +60,12 @@ fn double_click(p: Pos2, cx: &InputContext, out: &mut InputOutcome) {
         out.commands.push(Command::StartRename { id, text });
         return;
     }
-    let world = snap_to_grid(cx.plan.camera.view_to_world(to_vec2(p)), GRID_CELL);
-    let memberships = cx
-        .plan
-        .segment_at(p)
-        .map(|l| Membership {
-            line: l.line,
-            index: l.insert_at,
-        })
-        .into_iter()
-        .collect();
-    let station = Station::new(StationId(cx.map.peek_id()), "", world, cx.now, cx.energy);
-    let id = station.id;
-    out.edits.push(Edit::AddStation {
-        station,
-        memberships,
+    let spot = snap_to_grid(cx.plan.camera.view_to_world(to_vec2(p)), GRID_CELL);
+    let membership = cx.plan.segment_at(p).map(|l| Membership {
+        line: l.line,
+        index: l.insert_at,
     });
-    out.commands.push(Command::Select(Some(id)));
-    out.commands.push(Command::StartRename {
-        id,
-        text: String::new(),
-    });
+    out.commands.push(Command::NewIdea { spot, membership });
 }
 
 /// Left-drag: move stations, or draw a box with Shift. Any other drag pans.

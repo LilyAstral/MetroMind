@@ -7,6 +7,7 @@
 //!
 //! Data flows one way: Input → Edit → Model → this frame's plan → Render.
 
+mod actions;
 mod commands;
 mod files;
 mod map_view;
@@ -43,6 +44,8 @@ pub struct MetroMindApp {
     line_drafts: LineNameDrafts,
     status: Status,
     show_help: bool,
+    /// Where the last right-click landed; read by the context menu while it's open.
+    menu_target: Option<crate::ui::context_menu::MenuTarget>,
     grain: TextureHandle,
     field: FieldCache,
     /// Edits and commands from panels, applied with the map's input.
@@ -76,6 +79,7 @@ impl MetroMindApp {
             line_drafts: LineNameDrafts::new(),
             status: Status::default(),
             show_help: false,
+            menu_target: None,
             grain,
             field: FieldCache::default(),
             queued_edits: Vec::new(),

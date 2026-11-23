@@ -10,10 +10,9 @@ use crate::frame_plan::FramePlan;
 use crate::ui::picker::Picker;
 use eframe::egui::{Context, Pos2, Response};
 use metromind_core::Vec2;
-use metromind_core::chrono::{DateTime, Utc};
-use metromind_core::editing::Edit;
-use metromind_core::energy::{EnergySettings, Touch};
-use metromind_core::model::{MetroMap, StationId};
+use metromind_core::editing::{Edit, Membership};
+use metromind_core::energy::Touch;
+use metromind_core::model::{LineId, MetroMap, StationId};
 use std::collections::BTreeSet;
 
 /// View state that input needs to interpret gestures.
@@ -48,6 +47,26 @@ pub struct ConnectDrag {
     pub pointer: Pos2,
 }
 
+/// Something to do to the selection (or the primary idea). Keys and context
+/// menus both produce these, so the two can't drift apart.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Action {
+    /// Add the selection to a line, or take it off with `remove`.
+    ToLine {
+        line: LineId,
+        remove: bool,
+    },
+    /// Start a new line from this idea.
+    NewLine(StationId),
+    Rekindle,
+    Delete,
+    /// Cut the segment after `index` on a line.
+    RemoveConnection {
+        line: LineId,
+        index: usize,
+    },
+}
+
 /// Stations being dragged together. The model only changes on release.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StationDrag {
@@ -74,6 +93,13 @@ pub enum Command {
     Touch(StationId, Touch),
     Drag(Option<StationDrag>),
     Connect(Option<ConnectDrag>),
+    /// Something to do to the selection, from a key or a context menu.
+    Act(Action),
+    /// Create an idea at a grid spot, optionally on a segment (double-click or menu).
+    NewIdea {
+        spot: Vec2,
+        membership: Option<Membership>,
+    },
     OpenPicker(Picker),
     PickerStep(i32),
     PickerPick(usize),
@@ -117,8 +143,6 @@ pub struct InputContext<'a> {
     pub plan: &'a FramePlan,
     pub map: &'a MetroMap,
     pub interaction: Interaction,
-    pub now: DateTime<Utc>,
-    pub energy: &'a EnergySettings,
 }
 
 /// Read this frame's input on the map area. Keyboard shortcuts are skipped

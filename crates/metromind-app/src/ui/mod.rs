@@ -1,6 +1,7 @@
 //! Panels and popups around the map. Each returns edits/commands for the app
 //! to apply; none of them mutates the map directly.
 
+pub mod context_menu;
 pub mod help;
 pub mod layers_panel;
 pub mod menu;

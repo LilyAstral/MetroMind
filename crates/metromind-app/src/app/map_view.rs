@@ -2,12 +2,15 @@
 
 use super::MetroMindApp;
 use crate::frame_plan::{self, FramePlan, PlanInput, to_vec2};
+use crate::input::Command;
 use crate::input::{self, InputContext};
 use crate::render::{self, Textures, field::FieldKey};
 use crate::ui;
-use eframe::egui::{self, Context, CursorIcon, Rect, Sense, Ui};
+use crate::ui::context_menu::{self, MenuData, MenuTarget};
+use eframe::egui::{self, Context, CursorIcon, Pos2, Rect, Response, Sense, Ui};
 use metromind_core::clock::Clock;
 use metromind_core::editing::Edit;
+use metromind_core::geometry::{GRID_CELL, snap_to_grid};
 
 /// Fraction of the remaining distance the lens focus moves each frame.
 const LENS_SMOOTHING: f32 = 0.25;
@@ -18,7 +21,6 @@ impl MetroMindApp {
     pub(super) fn map_view(&mut self, ui: &mut Ui) {
         let (rect, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
         let ctx = ui.ctx().clone();
-        let now = self.clock.now();
         self.interaction.typing = self.rename.is_some();
         let outcome = input::collect(
             &ctx,
@@ -27,14 +29,13 @@ impl MetroMindApp {
                 plan: &self.plan,
                 map: &self.doc.map,
                 interaction: self.interaction.clone(),
-                now,
-                energy: &self.settings.energy,
             },
         );
         self.interaction.hovered = outcome.hovered;
         self.lens_pinned = outcome.pin_lens;
         self.queued_edits.extend(outcome.edits);
         self.queued_commands.extend(outcome.commands);
+        self.context_menu(&response);
         if std::mem::take(&mut self.fit_pending) {
             self.fit(rect);
         }
@@ -44,6 +45,48 @@ impl MetroMindApp {
         self.plan = self.build_plan(rect);
         self.draw(ui, rect);
         self.set_cursor(&ctx, &response);
+    }
+
+    /// A right-click decides what the menu acts on, and selects an unselected
+    /// station first. The menu itself is drawn here while it is open.
+    fn context_menu(&mut self, response: &Response) {
+        if let Some(at) = response
+            .interact_pointer_pos()
+            .filter(|_| response.secondary_clicked())
+        {
+            let target = self.target_at(at);
+            if let MenuTarget::Station(id) = target
+                && !self.interaction.is_selected(id)
+            {
+                self.queued_commands.push(Command::Select(Some(id)));
+            }
+            self.menu_target = Some(target);
+        }
+        let Some(target) = self.menu_target else {
+            return;
+        };
+        let data = MenuData {
+            map: &self.doc.map,
+            selection: &self.interaction.selection,
+        };
+        let mut commands = Vec::new();
+        response.context_menu(|ui| context_menu::show(ui, target, &data, &mut commands));
+        self.queued_commands.extend(commands);
+    }
+
+    fn target_at(&self, at: Pos2) -> MenuTarget {
+        let spot = snap_to_grid(self.plan.camera.view_to_world(to_vec2(at)), GRID_CELL);
+        if let Some(id) = self.plan.station_at(at) {
+            return MenuTarget::Station(id);
+        }
+        match self.plan.segment_at(at) {
+            Some(segment) => MenuTarget::Segment {
+                line: segment.line,
+                insert_at: segment.insert_at,
+                spot,
+            },
+            None => MenuTarget::Empty { spot },
+        }
     }
 
     fn apply_queued(&mut self, viewport: Rect) {

@@ -28,6 +28,8 @@ impl MetroMindApp {
             Command::PickerStep(delta) => self.picker_step(delta),
             Command::PickerPick(index) => self.picker_pick(index),
             Command::PickerCancel => self.interaction.picker = None,
+            Command::Act(action) => self.run_action(action),
+            Command::NewIdea { spot, membership } => self.new_idea(spot, membership),
             Command::Touch(id, kind) => self.touch(id, kind),
             Command::Drag(drag) => self.interaction.drag = drag,
             Command::Pan(delta) => self.settings.camera = self.settings.camera.panned(delta),
