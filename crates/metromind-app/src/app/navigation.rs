@@ -4,7 +4,7 @@
 use super::MetroMindApp;
 use crate::frame_plan::to_vec2;
 use crate::input::Command;
-use crate::ui::hover_preview::{self, HOVER_DELAY};
+use crate::ui::hover_panel::{self, Card, HOVER_DELAY};
 use crate::ui::search::{self, Action, SearchState};
 use eframe::egui::{Context, Rect};
 use metromind_core::chrono::{DateTime, Utc};
@@ -82,8 +82,9 @@ impl MetroMindApp {
         }
     }
 
-    /// Show a station's notes once the pointer has rested on it long enough.
-    pub(super) fn update_hover_preview(&mut self, ctx: &Context, now: f64) {
+    /// Show the hover panel once the pointer has rested on a station. Once it
+    /// is open, moving straight onto another station swaps it at once.
+    pub(super) fn update_hover_panel(&mut self, ctx: &Context, now: f64, viewport: Rect) {
         let blocked = self.interaction.drag.is_some()
             || self.interaction.picker.is_some()
             || self.search.is_some()
@@ -92,27 +93,35 @@ impl MetroMindApp {
         let hovered = self.interaction.hovered.filter(|_| !blocked);
         let Some(id) = hovered else {
             self.hover_since = None;
+            hover_panel::hide(ctx);
             return;
         };
         let since = match self.hover_since {
             Some((seen, since)) if seen == id => since,
-            _ => {
-                self.hover_since = Some((id, now));
-                now
-            }
+            Some((_, since)) if now - since >= HOVER_DELAY => now - HOVER_DELAY,
+            _ => now,
         };
+        self.hover_since = Some((id, since));
         let elapsed = now - since;
-        if elapsed < HOVER_DELAY {
-            ctx.request_repaint_after(std::time::Duration::from_secs_f64(HOVER_DELAY - elapsed));
-            return;
-        }
         let pointer = ctx.input(|i| i.pointer.hover_pos());
-        let Some(station) = self.doc.map.stations.get(&id) else {
-            return;
-        };
-        if let (Some(pointer), Some(text)) = (pointer, hover_preview::preview_text(&station.notes))
-        {
-            hover_preview::show(ctx, pointer, station.display_title(), &text);
+        let card = self
+            .doc
+            .map
+            .stations
+            .get(&id)
+            .and_then(|station| Card::of(&self.doc.map, station));
+        match (elapsed >= HOVER_DELAY, pointer, card) {
+            (true, Some(pointer), Some(card)) => {
+                let reduce = self.settings.reduce_motion;
+                hover_panel::show(ctx, pointer, viewport, &card, reduce);
+            }
+            _ => {
+                hover_panel::hide(ctx);
+                if elapsed < HOVER_DELAY {
+                    let wait = std::time::Duration::from_secs_f64(HOVER_DELAY - elapsed);
+                    ctx.request_repaint_after(wait);
+                }
+            }
         }
     }
 }

@@ -2,8 +2,9 @@
 //! to apply; none of them mutates the map directly.
 
 pub mod context_menu;
+pub mod glass;
 pub mod help;
-pub mod hover_preview;
+pub mod hover_panel;
 pub mod line_rows;
 pub mod menu;
 pub mod note_draft;

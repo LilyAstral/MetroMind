@@ -45,7 +45,7 @@ impl MetroMindApp {
         self.apply_queued(rect);
         self.advance_glide(&ctx);
         let now = ctx.input(|i| i.time);
-        self.update_hover_preview(&ctx, now);
+        self.update_hover_panel(&ctx, now, rect);
         self.follow_cursor(&ctx, response.hover_pos());
         self.plan = self.build_plan(rect);
         self.draw(ui, rect);
