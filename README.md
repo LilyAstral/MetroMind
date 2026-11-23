@@ -75,6 +75,7 @@ crates/
     sample.rs       the sample map
     tests/          integration tests (save/load round trip, editing sessions)
   metromind-app/    thin eframe shell
+    assets/         app icon: icon.svg (source), icon.png (window), icon.ico (exe, via build.rs)
     app/            MetroMindApp: per-frame flow, commands, file handling
     input/          egui input → Vec<Edit> + Vec<Command>
     frame_plan/     map + camera + lens + clock → FramePlan (screen space)
