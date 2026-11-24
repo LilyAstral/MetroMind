@@ -1,6 +1,6 @@
 # MetroMind
 
-A Windows desktop app for brainstorming. Ideas are **stations** on a **metro map**. Themes are colored **lines**, and an idea on two lines is an **interchange**. A **fisheye lens** follows the cursor, so the whole map always fits on screen. Each station glows with **energy** that rises when you work on it and fades gently over time, without any shame signals.
+A desktop app for brainstorming, for Windows and macOS. Ideas are **stations** on a **metro map**. Themes are colored **lines**, and an idea on two lines is an **interchange**. A **fisheye lens** follows the cursor, so the whole map always fits on screen. Each station glows with **energy** that rises when you work on it and fades gently over time, without any shame signals.
 
 Built in Rust with [egui](https://github.com/emilk/egui) / eframe. The full product spec is in [instructions.md](instructions.md).
 
@@ -19,6 +19,18 @@ You can pass a map file to open it directly: `metromind-app path\to\ideas.metrom
 ```
 
 This builds a release binary and installs it for the current user (no admin rights needed): `MetroMind.exe` goes to `%LOCALAPPDATA%\Programs\MetroMind`, a Start Menu shortcut is added, and `.metromind` files open in MetroMind when double-clicked. Run it again to update; a running copy is closed first. Options: `-RunTests` (test before installing), `-DesktopShortcut`, `-NoFileAssociation`, `-InstallDir <path>`, and `-Uninstall` (keeps your maps and settings). If scripts are blocked, run `powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1`.
+
+## Mac
+
+No Apple developer account is needed. On a Mac with Rust and the Xcode Command Line Tools (`xcode-select --install`):
+
+```sh
+scripts/bundle-macos.sh
+```
+
+This builds a universal (Apple Silicon + Intel) `dist/macos/MetroMind.app` and `MetroMind-macos.zip`. Drag the app into Applications to install it. Without a Mac, run the **macOS build** workflow from the repo's Actions tab on GitHub (it also runs on `v*` tags) and download the `MetroMind-macos` artifact.
+
+The app is ad-hoc signed but not notarized, so a downloaded copy is blocked on first launch. Allow it under System Settings → Privacy & Security → **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/MetroMind.app`. Copies you build yourself aren't blocked. Double-clicking a `.metromind` file doesn't open it in MetroMind on a Mac yet; use **File → Open**. Maps and settings live in `~/Library/Application Support/MetroMind`.
 
 The checks below run at every milestone and all pass:
 
