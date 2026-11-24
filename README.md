@@ -28,9 +28,26 @@ No Apple developer account is needed. On a Mac with Rust and the Xcode Command L
 scripts/bundle-macos.sh
 ```
 
-This builds a universal (Apple Silicon + Intel) `dist/macos/MetroMind.app` and `MetroMind-macos.zip`. Drag the app into Applications to install it. Without a Mac, run the **macOS build** workflow from the repo's Actions tab on GitHub (it also runs on `v*` tags) and download the `MetroMind-macos` artifact.
+This builds a universal (Apple Silicon + Intel) `dist/macos/MetroMind.app` and `MetroMind-macos.zip`. Drag the app into Applications to install it. Without a Mac, use the **Release** workflow (see below).
 
 The app is ad-hoc signed but not notarized, so a downloaded copy is blocked on first launch. Allow it under System Settings → Privacy & Security → **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/MetroMind.app`. Copies you build yourself aren't blocked. Double-clicking a `.metromind` file doesn't open it in MetroMind on a Mac yet; use **File → Open**. Maps and settings live in `~/Library/Application Support/MetroMind`.
+
+## Release builds
+
+```powershell
+.\scripts\bundle-windows.ps1
+```
+
+This writes `dist/windows/MetroMind-windows.zip`: a portable `MetroMind.exe` that runs from anywhere (maps and settings go to `%APPDATA%\MetroMind`). It isn't code-signed, so SmartScreen may warn on first launch: **More info → Run anyway**.
+
+The **Release** GitHub workflow builds both the Windows zip and the Mac zip. Run it by hand to get them as artifacts (`gh workflow run release.yml`), or push a version tag to also publish a GitHub release with both attached:
+
+```powershell
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+## Checks
 
 The checks below run at every milestone and all pass:
 
